@@ -1,0 +1,24 @@
+{
+  "name": "retro-cafe-app",
+  "version": "1.0.0",
+  "main": "main.js",
+  "scripts": {
+    "start": "set NODE_OPTIONS=--enable-source-maps --no-warnings && set NODE_ICU_DATA=node_modules/full-icu && electron .",
+    "build": "npx @electron/packager . printerApp --platform=win32 --arch=x64 --out=dist --overwrite",
+    "build-all": "npx @electron/packager . printerApp --all --out=dist --overwrite"
+  },
+  "dependencies": {
+    "child_process": "^1.0.2",
+    "dotenv": "^17.2.1",
+    "electron": "^37.2.6",
+    "electron-store": "^10.1.0",
+    "escpos": "^3.0.0-alpha.6",
+    "escpos-network": "^3.0.0-alpha.5",
+    "fs": "^0.0.1-security",
+    "path": "^0.12.7",
+    "ws": "^8.18.3"
+  },
+  "devDependencies": {
+    "@electron/packager": "^18.4.0"
+  }
+}

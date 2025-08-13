@@ -1,0 +1,868 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <title>Backend Server Controller</title>
+    <style>
+      body {
+        font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+        padding: 20px;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        margin: 0;
+        min-height: 100vh;
+        color: #333;
+      }
+
+      .container {
+        max-width: 700px;
+        margin: 0 auto;
+        background: white;
+        border-radius: 10px;
+        padding: 30px;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+      }
+
+      h2 {
+        text-align: center;
+        color: #333;
+        margin-bottom: 30px;
+        font-size: 24px;
+      }
+
+      .status-section {
+        background: #f8f9fa;
+        padding: 20px;
+        border-radius: 8px;
+        margin-bottom: 20px;
+        border-left: 4px solid #007bff;
+      }
+
+      .status-indicator {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        font-size: 16px;
+        margin-bottom: 10px;
+      }
+
+      .status-dot {
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        animation: pulse 2s infinite;
+      }
+
+      .status-running {
+        background: #28a745;
+      }
+      .status-stopped {
+        background: #6c757d;
+      }
+      .status-starting {
+        background: #ffc107;
+      }
+      .status-error {
+        background: #dc3545;
+      }
+
+      @keyframes pulse {
+        0% {
+          opacity: 1;
+        }
+        50% {
+          opacity: 0.5;
+        }
+        100% {
+          opacity: 1;
+        }
+      }
+
+      .button-group {
+        display: flex;
+        gap: 10px;
+        margin: 20px 0;
+        flex-wrap: wrap;
+      }
+
+      button {
+        padding: 12px 20px;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+        font-size: 14px;
+        font-weight: 600;
+        transition: all 0.3s ease;
+        flex: 1;
+        min-width: 120px;
+      }
+
+      .btn-primary {
+        background: #007bff;
+        color: white;
+      }
+      .btn-primary:hover {
+        background: #0056b3;
+      }
+
+      .btn-success {
+        background: #28a745;
+        color: white;
+      }
+      .btn-success:hover {
+        background: #1e7e34;
+      }
+
+      .btn-danger {
+        background: #dc3545;
+        color: white;
+      }
+      .btn-danger:hover {
+        background: #c82333;
+      }
+
+      .btn-secondary {
+        background: #6c757d;
+        color: white;
+      }
+      .btn-secondary:hover {
+        background: #545b62;
+      }
+
+      button:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+      }
+
+      .status-message {
+        font-style: italic;
+        color: #666;
+        margin-top: 5px;
+      }
+
+      .backend-info {
+        background: #e9ecef;
+        padding: 15px;
+        border-radius: 5px;
+        margin: 15px 0;
+        word-break: break-all;
+        font-family: "Courier New", monospace;
+        font-size: 12px;
+      }
+
+      .health-check {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-top: 15px;
+      }
+
+      .loading {
+        display: inline-block;
+        width: 16px;
+        height: 16px;
+        border: 2px solid #f3f3f3;
+        border-radius: 50%;
+        border-top: 2px solid #007bff;
+        animation: spin 1s linear infinite;
+      }
+
+      @keyframes spin {
+        0% {
+          transform: rotate(0deg);
+        }
+        100% {
+          transform: rotate(360deg);
+        }
+      }
+
+      .port-section {
+        background: #f1f3f4;
+        padding: 20px;
+        border-radius: 8px;
+        margin: 20px 0;
+        border-left: 4px solid #28a745;
+      }
+
+      .port-input-group {
+        display: flex;
+        gap: 10px;
+        align-items: center;
+        margin: 15px 0;
+        flex-wrap: wrap;
+      }
+
+      .port-input {
+        padding: 8px 12px;
+        border: 2px solid #ddd;
+        border-radius: 4px;
+        font-size: 14px;
+        width: 100px;
+        text-align: center;
+      }
+
+      .port-input:focus {
+        border-color: #007bff;
+        outline: none;
+      }
+
+      .active-ports {
+        background: white;
+        padding: 15px;
+        border-radius: 5px;
+        margin: 15px 0;
+      }
+
+      .port-list {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-top: 10px;
+      }
+
+      .port-item {
+        background: #e9ecef;
+        padding: 5px 10px;
+        border-radius: 15px;
+        font-size: 12px;
+        display: flex;
+        align-items: center;
+        gap: 5px;
+      }
+
+      .port-item.current {
+        background: #28a745;
+        color: white;
+      }
+
+      .port-item .kill-btn {
+        background: #dc3545;
+        color: white;
+        border: none;
+        border-radius: 50%;
+        width: 18px;
+        height: 18px;
+        font-size: 10px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 0;
+        padding: 10px;
+        flex: none;
+      }
+
+      .port-item .kill-btn:hover {
+        background: #c82333;
+      }
+      
+      .port-details {
+        background: white;
+        padding: 15px;
+        border-radius: 5px;
+        margin: 15px 0;
+        border: 1px solid #ddd;
+      }
+      
+      .port-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 10px;
+      }
+      
+      .port-table th,
+      .port-table td {
+        padding: 8px 12px;
+        text-align: left;
+        border-bottom: 1px solid #eee;
+        font-size: 12px;
+      }
+      
+      .port-table th {
+        background: #f8f9fa;
+        font-weight: 600;
+        color: #495057;
+      }
+      
+      .port-table tr:hover {
+        background: #f8f9fa;
+      }
+      
+      .process-name {
+        font-weight: 600;
+        color: #007bff;
+      }
+      
+      .current-port-row {
+        background: #e7f3ff !important;
+        border-left: 3px solid #007bff;
+      }
+      
+      .toggle-details {
+        margin: 10px 0;
+      }
+      
+      .port-details-toggle {
+        background: #17a2b8;
+        color: white;
+        padding: 8px 15px;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 13px;
+        margin: 10px 0;
+      }
+      
+      .port-details-toggle:hover {
+        background: #138496;
+      }
+      
+      .port-details-content {
+        display: none;
+        margin-top: 15px;
+      }
+      
+      .process-details {
+        background: #f8f9fa;
+        border: 1px solid #dee2e6;
+        border-radius: 6px;
+        margin-bottom: 10px;
+        overflow: hidden;
+      }
+      
+      .process-header {
+        background: #e9ecef;
+        padding: 10px 15px;
+        font-weight: 600;
+        color: #495057;
+        border-bottom: 1px solid #dee2e6;
+      }
+      
+      .process-info {
+        padding: 12px 15px;
+        font-size: 13px;
+        line-height: 1.5;
+      }
+      
+      .process-info strong {
+        color: #495057;
+        margin-right: 8px;
+      }
+      
+      .process-info div {
+        margin: 5px 0;
+      }
+      
+      .port-number {
+        font-size: 16px;
+        font-weight: bold;
+        color: #007bff;
+      }
+      
+      .kill-process-btn {
+        background: #dc3545;
+        color: white;
+        border: none;
+        border-radius: 4px;
+        padding: 6px 12px;
+        font-size: 11px;
+        cursor: pointer;
+        margin-top: 10px;
+      }
+      
+      .kill-process-btn:hover {
+        background: #c82333;
+      }
+      
+      .no-processes {
+        text-align: center;
+        color: #6c757d;
+        font-style: italic;
+        padding: 20px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h2>🖥️ Backend Server Controller</h2>
+
+      <div class="status-section">
+        <div class="status-indicator">
+          <div class="status-dot status-stopped" id="statusDot"></div>
+          <strong id="statusText">Server holati yuklanmoqda...</strong>
+        </div>
+        <div class="status-message" id="statusMessage">
+          Holatni tekshirish...
+        </div>
+      </div>
+
+      <div class="button-group">
+        <button id="selectBtn" class="btn-primary">
+          📁 Backend faylini tanlash
+        </button>
+        <button id="startBtn" class="btn-success" disabled>
+          ▶️ Serverni ishga tushirish
+        </button>
+        <button id="stopBtn" class="btn-danger" disabled>
+          ⏹️ Serverni to'xtatish
+        </button>
+      </div>
+
+      <div class="button-group">
+        <button id="refreshBtn" class="btn-secondary">
+          🔄 Holatni yangilash
+        </button>
+        <button id="healthBtn" class="btn-secondary">
+          ❤️ Serverning sog'ligini tekshirish
+        </button>
+      </div>
+
+      <div class="port-section">
+        <h3>🌐 Port boshqaruvi</h3>
+        <div class="port-input-group">
+          <label>Server port:</label>
+          <input
+            type="number"
+            id="portInput"
+            class="port-input"
+            min="1"
+            max="65535"
+            value="8080"
+          />
+          <button id="setPortBtn" class="btn-primary">Port o'rnatish</button>
+          <button id="refreshPortsBtn" class="btn-secondary">
+            Portlarni yangilash
+          </button>
+        </div>
+
+        <div class="active-ports">
+          <strong>Faol portlar:</strong>
+          <div class="port-list" id="portsList">
+            <span style="color: #666; font-style: italic">Yuklanmoqda...</span>
+          </div>
+        </div>
+        
+        <button id="togglePortDetails" class="port-details-toggle">
+          📊 Portlardagi jarayonlarni ko'rsatish
+        </button>
+        
+        <div id="portDetailsContent" class="port-details-content">
+          <div id="portProcesses">
+            <div class="no-processes">Ma'lumotlar yuklanmoqda...</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="backend-info" id="backendInfo" style="display: none">
+        <strong>Backend fayl:</strong><br />
+        <span id="backendPath">-</span>
+      </div>
+
+      <div class="health-check">
+        <span id="healthStatus">Sog'lik holati: noma'lum</span>
+        <div id="healthLoading" class="loading" style="display: none"></div>
+      </div>
+    </div>
+
+    <script>
+      // DOM elementlari
+      const statusDot = document.getElementById("statusDot");
+      const statusText = document.getElementById("statusText");
+      const statusMessage = document.getElementById("statusMessage");
+      const selectBtn = document.getElementById("selectBtn");
+      const startBtn = document.getElementById("startBtn");
+      const stopBtn = document.getElementById("stopBtn");
+      const refreshBtn = document.getElementById("refreshBtn");
+      const healthBtn = document.getElementById("healthBtn");
+      const backendInfo = document.getElementById("backendInfo");
+      const backendPath = document.getElementById("backendPath");
+      const healthStatus = document.getElementById("healthStatus");
+      const healthLoading = document.getElementById("healthLoading");
+
+      // Port elementlari
+      const portInput = document.getElementById("portInput");
+      const setPortBtn = document.getElementById("setPortBtn");
+      const refreshPortsBtn = document.getElementById("refreshPortsBtn");
+      const portsList = document.getElementById("portsList");
+      const togglePortDetails = document.getElementById("togglePortDetails");
+      const portDetailsContent = document.getElementById("portDetailsContent");
+      const portProcesses = document.getElementById("portProcesses");
+
+      let currentPort = 8080;
+      let showPortDetails = false;
+
+      // Portlar listini yangilash
+      async function updatePortsList() {
+        try {
+          const result = await window.electronAPI.getActivePorts();
+          const { ports, currentPort: serverCurrentPort } = result;
+          currentPort = serverCurrentPort;
+          portInput.value = currentPort;
+
+          if (ports.length === 0) {
+            portsList.innerHTML =
+              '<span style="color: #666; font-style: italic;">Faol portlar topilmadi</span>';
+            return;
+          }
+
+          portsList.innerHTML = "";
+          ports.forEach((port) => {
+            const portItem = document.createElement("div");
+            portItem.className = `port-item ${port === currentPort ? "current" : ""}`;
+
+            portItem.innerHTML = `
+              <span>${port}${port === currentPort ? " (joriy)" : ""}</span>
+              <button class="kill-btn" onclick="killPort(${port})" title="Port ni to'xtatish">×</button>
+            `;
+
+            portsList.appendChild(portItem);
+          });
+
+          // Agar detaillar ochiq bo'lsa, ularni yangilash
+          if (showPortDetails) {
+            await updatePortProcesses();
+          }
+        } catch (error) {
+          console.error("Portlar listini yangilashda xatolik:", error);
+          portsList.innerHTML =
+            '<span style="color: #dc3545;">Xatolik yuz berdi</span>';
+        }
+      }
+
+      // Port jarayonlari haqida batafsil ma'lumot
+      async function updatePortProcesses() {
+        try {
+          portProcesses.innerHTML = '<div class="no-processes">Ma\'lumotlar yuklanmoqda...</div>';
+          
+          const result = await window.electronAPI.getPortsWithProcessInfo();
+          
+          if (!result.success || result.ports.length === 0) {
+            portProcesses.innerHTML = '<div class="no-processes">Faol portlar topilmadi</div>';
+            return;
+          }
+
+          portProcesses.innerHTML = "";
+          
+          result.ports.forEach((portInfo) => {
+            const processDiv = document.createElement("div");
+            processDiv.className = "process-details";
+            
+            const isCurrentPort = portInfo.port === currentPort;
+            
+            processDiv.innerHTML = `
+              <div class="process-header">
+                <span class="port-number">Port ${portInfo.port}</span>
+                ${isCurrentPort ? ' <span style="color: #28a745; font-size: 12px;">(Joriy server)</span>' : ''}
+              </div>
+              <div class="process-info">
+                <div><strong>Jarayon nomi:</strong> ${portInfo.processName || 'Noma\'lum'}</div>
+                <div><strong>PID:</strong> ${portInfo.pid || 'N/A'}</div>
+                <div><strong>Holat:</strong> ${portInfo.state || 'LISTENING'}</div>
+                <div><strong>Protocol:</strong> ${portInfo.protocol || 'TCP'}</div>
+                ${portInfo.processPath ? `<div><strong>Fayl manzili:</strong> ${portInfo.processPath}</div>` : ''}
+                ${portInfo.command ? `<div><strong>Buyruq:</strong> <code style="font-size: 11px; background: #f1f1f1; padding: 2px 4px; border-radius: 3px;">${portInfo.command}</code></div>` : ''}
+                <button class="kill-process-btn" onclick="killPortProcess(${portInfo.port}, ${portInfo.pid}, '${portInfo.processName || 'Noma\'lum'}')" 
+                        ${isCurrentPort ? 'title="Diqqat: Bu joriy server portini to\'xtatadi!"' : ''}>
+                  🗑️ Jarayonni to'xtatish
+                </button>
+              </div>
+            `;
+            
+            portProcesses.appendChild(processDiv);
+          });
+          
+        } catch (error) {
+          console.error("Port jarayonlarini olishda xatolik:", error);
+          portProcesses.innerHTML = '<div class="no-processes" style="color: #dc3545;">Ma\'lumotlarni yuklashda xatolik yuz berdi</div>';
+        }
+      }
+
+      // Jarayonni to'xtatish
+      async function killPortProcess(port, pid, processName) {
+        const isCurrentPort = port === currentPort;
+        const confirmMessage = isCurrentPort
+          ? `Diqqat! Bu joriy server portini (${port}) to'xtatmoqchisiz.\nJarayon: ${processName} (PID: ${pid})\n\nDavom etamizmi?`
+          : `Port ${port} da ishlayotgan jarayonni to'xtatmoqchimisiz?\nJarayon: ${processName} (PID: ${pid})`;
+        
+        if (confirm(confirmMessage)) {
+          try {
+            const result = await window.electronAPI.killPort(port);
+            if (result.success) {
+              statusMessage.textContent = `✅ Port ${port} jarayoni muvaffaqiyatli to'xtatildi`;
+              await updatePortsList();
+              if (showPortDetails) {
+                await updatePortProcesses();
+              }
+            } else {
+              statusMessage.textContent = `❌ Port ${port} jarayonini to'xtatishda xatolik: ${result.error}`;
+            }
+          } catch (error) {
+            statusMessage.textContent = `❌ Xatolik: ${error.message}`;
+          }
+        }
+      }
+
+      // Port ni to'xtatish
+      async function killPort(port) {
+        if (
+          port === currentPort &&
+          confirm(
+            `Joriy server port ${port} ni to'xtatmoqchimisiz? Bu server ishini to'xtatishi mumkin.`
+          )
+        ) {
+          try {
+            const result = await window.electronAPI.killPort(port);
+            if (result.success) {
+              statusMessage.textContent = `✅ Port ${port} muvaffaqiyatli to'xtatildi`;
+              await updatePortsList();
+            } else {
+              statusMessage.textContent = `❌ Port ${port} ni to'xtatishda xatolik`;
+            }
+          } catch (error) {
+            statusMessage.textContent = `❌ Xatolik: ${error.message}`;
+          }
+        } else if (port !== currentPort) {
+          try {
+            const result = await window.electronAPI.killPort(port);
+            if (result.success) {
+              statusMessage.textContent = `✅ Port ${port} muvaffaqiyatli to'xtatildi`;
+              await updatePortsList();
+            } else {
+              statusMessage.textContent = `❌ Port ${port} ni to'xtatishda xatolik`;
+            }
+          } catch (error) {
+            statusMessage.textContent = `❌ Xatolik: ${error.message}`;
+          }
+        }
+      }
+
+      // Status yangilash funksiyasi
+      function updateUI(data) {
+        const { status, message, backendPath: bPath, isRunning } = data;
+
+        // Status dot rangini o'zgartirish
+        statusDot.className = `status-dot status-${status}`;
+
+        // Status matni
+        const statusTexts = {
+          running: "🟢 Server ishlab turibdi",
+          stopped: "🔴 Server to'xtatilgan",
+          starting: "🟡 Server ishga tushmoqda",
+          error: "🔴 Xatolik yuz berdi",
+        };
+
+        statusText.textContent = statusTexts[status] || "Noma'lum holat";
+        statusMessage.textContent = message || "";
+
+        // Tugmalar holatini boshqarish
+        const hasBackend = Boolean(bPath);
+        const isRunningOrStarting =
+          status === "running" || status === "starting";
+
+        selectBtn.disabled = isRunningOrStarting;
+        startBtn.disabled = !hasBackend || isRunningOrStarting;
+        stopBtn.disabled = !isRunningOrStarting;
+
+        // Tugma textlarini tiklash
+        if (status !== "starting") {
+          startBtn.innerHTML = "▶️ Serverni ishga tushirish";
+        }
+        if (status === "stopped" || status === "error") {
+          stopBtn.innerHTML = "⏹️ Serverni to'xtatish";
+        }
+
+        // Backend info ko'rsatish
+        if (bPath) {
+          backendPath.textContent = bPath;
+          backendInfo.style.display = "block";
+        } else {
+          backendInfo.style.display = "none";
+        }
+      }
+
+      // Server status listener
+      window.electronAPI.onServerStatusChanged((data) => {
+        console.log("Server status changed:", data);
+        updateUI(data);
+      });
+
+      // Tugma event listenerlari
+      selectBtn.addEventListener("click", async () => {
+        const path = await window.electronAPI.selectBackend();
+        if (path) {
+          // Status avtomatik yangilanadi listener orqali
+        } else {
+          statusMessage.textContent = "❌ Backend fayl tanlanmadi";
+        }
+      });
+
+      startBtn.addEventListener("click", async () => {
+        // Loading holatini ko'rsatish
+        startBtn.disabled = true;
+        startBtn.innerHTML = "⏳ Ishga tushirilmoqda...";
+        statusMessage.textContent = "Server ishga tushirilmoqda...";
+
+        try {
+          const result = await window.electronAPI.startServer();
+          if (!result.success) {
+            statusMessage.textContent = `❌ ${result.error}`;
+            startBtn.disabled = false;
+            startBtn.innerHTML = "▶️ Serverni ishga tushirish";
+          }
+        } catch (error) {
+          statusMessage.textContent = `❌ Ishga tushirishda xatolik: ${error.message}`;
+          startBtn.disabled = false;
+          startBtn.innerHTML = "▶️ Serverni ishga tushirish";
+        }
+      });
+
+      stopBtn.addEventListener("click", async () => {
+        // Loading holatini ko'rsatish
+        stopBtn.disabled = true;
+        stopBtn.innerHTML = "⏳ To'xtatilmoqda...";
+        statusMessage.textContent = "Server to'xtatilmoqda...";
+
+        try {
+          const result = await window.electronAPI.stopServer();
+          if (!result.success) {
+            statusMessage.textContent = `❌ ${result.error}`;
+          }
+        } catch (error) {
+          statusMessage.textContent = `❌ To'xtatishda xatolik: ${error.message}`;
+        } finally {
+          // Tugmani tiklash (status o'zgarganda avtomatik tiklanaadi)
+          setTimeout(() => {
+            stopBtn.innerHTML = "⏹️ Serverni to'xtatish";
+          }, 2000);
+        }
+      });
+
+      refreshBtn.addEventListener("click", async () => {
+        const status = await window.electronAPI.getServerStatus();
+        updateUI({
+          status: status.status,
+          message: "Holat yangilandi",
+          backendPath: status.backendPath,
+          isRunning: status.isRunning,
+        });
+      });
+
+      healthBtn.addEventListener("click", async () => {
+        healthLoading.style.display = "inline-block";
+        healthStatus.textContent = "Tekshirilmoqda...";
+
+        try {
+          const result = await window.electronAPI.checkServerHealth();
+          healthStatus.textContent = result.isRunning
+            ? "✅ Server javob bermoqda (sog'lom)"
+            : "❌ Server javob bermayapti";
+        } catch (error) {
+          healthStatus.textContent = "❌ Tekshirishda xatolik";
+        } finally {
+          healthLoading.style.display = "none";
+        }
+      });
+
+      // Port tugmalari event listenerlari
+      setPortBtn.addEventListener("click", async () => {
+        const port = parseInt(portInput.value);
+        if (!port || port < 1 || port > 65535) {
+          statusMessage.textContent = "❌ Yaroqsiz port raqami (1-65535)";
+          return;
+        }
+
+        try {
+          const result = await window.electronAPI.setPort(port);
+          if (result.success) {
+            currentPort = result.port;
+            statusMessage.textContent = `✅ Port ${port} ga o'zgartirildi`;
+            await updatePortsList();
+          } else {
+            statusMessage.textContent = `❌ ${result.error}`;
+          }
+        } catch (error) {
+          statusMessage.textContent = `❌ Xatolik: ${error.message}`;
+        }
+      });
+
+      refreshPortsBtn.addEventListener("click", async () => {
+        refreshPortsBtn.disabled = true;
+        refreshPortsBtn.textContent = "Yangilanmoqda...";
+
+        await updatePortsList();
+
+        refreshPortsBtn.disabled = false;
+        refreshPortsBtn.textContent = "Portlarni yangilash";
+      });
+
+      // Enter tugmasi bilan port o'rnatish
+      portInput.addEventListener("keypress", (e) => {
+        if (e.key === "Enter") {
+          setPortBtn.click();
+        }
+      });
+
+      // Port detaillarini ko'rsatish/yashirish
+      togglePortDetails.addEventListener("click", async () => {
+        showPortDetails = !showPortDetails;
+        
+        if (showPortDetails) {
+          portDetailsContent.style.display = "block";
+          togglePortDetails.textContent = "📊 Jarayonlarni yashirish";
+          await updatePortProcesses();
+        } else {
+          portDetailsContent.style.display = "none";
+          togglePortDetails.textContent = "📊 Portlardagi jarayonlarni ko'rsatish";
+        }
+      });
+
+      // Sahifa yuklanganda holatni tekshirish
+      window.addEventListener("load", async () => {
+        try {
+          const status = await window.electronAPI.getServerStatus();
+          updateUI({
+            status: status.status,
+            message: "Ilova tayyor",
+            backendPath: status.backendPath,
+            isRunning: status.isRunning,
+          });
+
+          // Portlar listini ham yangilash
+          await updatePortsList();
+        } catch (error) {
+          console.error("Status olishda xatolik:", error);
+          statusText.textContent = "Status olishda xatolik";
+        }
+      });
+
+      // Har 30 soniyada avtomatik health check va portlar yangilash
+      setInterval(async () => {
+        try {
+          const status = await window.electronAPI.getServerStatus();
+          if (status.status === "running") {
+            const health = await window.electronAPI.checkServerHealth();
+            if (!health.isRunning) {
+              // Agar server javob bermasa, statusni yangilaymiz
+              updateUI({
+                status: "error",
+                message:
+                  "Server javob bermayapti - qayta ishga tushirishni tavsiya qilamiz",
+                backendPath: status.backendPath,
+                isRunning: false,
+              });
+            }
+          }
+
+          // Portlar listini ham yangilash
+          await updatePortsList();
+          
+          // Agar port detallari ochiq bo'lsa, ularni ham yangilash
+          if (showPortDetails) {
+            await updatePortProcesses();
+          }
+        } catch (error) {
+          console.error("Avtomatik tekshirishda xatolik:", error);
+        }
+      }, 30000); // 30 soniya
+    </script>
+  </body>
+</html>
