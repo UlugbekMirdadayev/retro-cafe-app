@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Retro Cafe - Управление принтером</title>
+  <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="app-container">
+    <!-- Заголовок окна (для frameless window) -->
+    <div class="titlebar">
+      <div class="window-title">
+        <img src="assets/logo.svg" alt="Retro Cafe" class="titlebar-logo">
+        Retro Cafe - Управление принтером
+      </div>
+      <div class="window-controls">
+        <div class="window-control window-control-minimize">
+          <span class="material-icons">remove</span>
+        </div>
+        <div class="window-control window-control-maximize">
+          <span class="material-icons">crop_square</span>
+        </div>
+        <div class="window-control window-control-close">
+          <span class="material-icons">close</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Основной контент приложения -->
+    <div class="app-content">
+      <!-- Боковое меню -->
+      <div class="app-sidebar">
+        <div class="sidebar-header">Панель управления</div>
+        <ul class="nav-list">
+          <li class="nav-item active" data-tab="printer">
+            <span class="material-icons">print</span>
+            <span>Принтер</span>
+          </li>
+          <li class="nav-item" data-tab="templates">
+            <span class="material-icons">description</span>
+            <span>Шаблоны</span>
+          </li>
+          <li class="nav-item" data-tab="logs">
+            <span class="material-icons">receipt_long</span>
+            <span>Журнал</span>
+          </li>
+          <li class="nav-item" data-tab="settings">
+            <span class="material-icons">settings</span>
+            <span>Настройки</span>
+          </li>
+        </ul>
+        
+        <div class="sidebar-footer">
+          <div class="status-indicator">
+            <div class="status-item">
+              <span>Принтер:</span>
+              <div class="status printer-status">
+                <span class="status-dot status-dot-disconnected"></span>
+                <span class="status-text">Отключен</span>
+              </div>
+            </div>
+            <div class="status-item">
+              <span>Сервер:</span>
+              <div class="status socket-status">
+                <span class="status-dot status-dot-disconnected"></span>
+                <span class="status-text">Отключен</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Основное содержимое -->
+      <div class="main-content">
+        <!-- Вкладка принтера -->
+        <div id="printer-tab" class="tab-content active">
+          <div class="card">
+            <div class="card-header">
+              <h2>Управление принтером</h2>
+            </div>
+            <div class="card-body">
+              <div class="form-group">
+                <label for="printer-ip">IP адрес принтера</label>
+                <div class="input-with-button">
+                  <input type="text" id="printer-ip" class="form-control" placeholder="192.168.1.100">
+                  <button id="save-printer-settings" class="btn btn-primary">Сохранить</button>
+                </div>
+              </div>
+              
+              <div class="form-actions">
+                <button id="connect-printer" class="btn btn-success">
+                  <span class="material-icons">link</span> Подключиться
+                </button>
+                <button id="test-print" class="btn">
+                  <span class="material-icons">print</span> Тест печати
+                </button>
+              </div>
+              
+              <div class="status-display mt-md">
+                <div class="status-label">Состояние принтера:</div>
+                <div id="printer-status" class="status status-disconnected">
+                  <span class="status-dot status-dot-disconnected"></span>
+                  <span>Отключен</span>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <div class="card">
+            <div class="card-header">
+              <h2>Настройки сервера</h2>
+            </div>
+            <div class="card-body">
+              <div class="form-group">
+                <label for="socket-url">URL сокет-сервера</label>
+                <div class="input-with-button">
+                  <input type="text" id="socket-url" class="form-control" placeholder="http://localhost:3000">
+                  <button id="save-socket-settings" class="btn btn-primary">Сохранить</button>
+                </div>
+              </div>
+              
+              <div class="form-actions">
+                <button id="connect-socket" class="btn btn-success">
+                  <span class="material-icons">cloud</span> Подключиться к серверу
+                </button>
+              </div>
+              
+              <div class="status-display mt-md">
+                <div class="status-label">Состояние соединения:</div>
+                <div id="socket-status" class="status status-disconnected">
+                  <span class="status-dot status-dot-disconnected"></span>
+                  <span>Отключен</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Вкладка шаблонов -->
+        <div id="templates-tab" class="tab-content">
+          <div class="card">
+            <div class="card-header d-flex justify-between align-center">
+              <h2>Шаблоны чеков</h2>
+              <button id="add-template" class="btn btn-primary">
+                <span class="material-icons">add</span> Новый шаблон
+              </button>
+            </div>
+            <div class="card-body d-flex">
+              <div class="template-list-container">
+                <h3>Список шаблонов</h3>
+                <ul id="templates-list" class="template-list">
+                  <!-- Шаблоны будут добавлены через JavaScript -->
+                </ul>
+              </div>
+              
+              <div class="template-editor">
+                <h3>Редактор шаблона</h3>
+                <div class="form-group">
+                  <label for="template-name">Название шаблона</label>
+                  <input type="text" id="template-name" class="form-control" placeholder="Название шаблона">
+                </div>
+                
+                <div class="form-group">
+                  <label for="template-content">Содержимое шаблона</label>
+                  <textarea id="template-content" class="form-control" rows="10" placeholder="Текст шаблона..."></textarea>
+                </div>
+                
+                <div class="form-group">
+                  <label for="set-as-default">Установить по умолчанию для</label>
+                  <select id="set-as-default" class="form-control">
+                    <option value="">Не устанавливать</option>
+                    <option value="new_order">Новый заказ</option>
+                    <option value="new_service">Сервисный запрос</option>
+                  </select>
+                </div>
+                
+                <div class="form-actions">
+                  <button id="save-template" class="btn btn-primary">
+                    <span class="material-icons">save</span> Сохранить
+                  </button>
+                  <button id="delete-template" class="btn btn-danger">
+                    <span class="material-icons">delete</span> Удалить
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Вкладка логов -->
+        <div id="logs-tab" class="tab-content">
+          <div class="card">
+            <div class="card-header d-flex justify-between align-center">
+              <h2>Журнал событий</h2>
+              <button id="clear-logs" class="btn btn-danger">
+                <span class="material-icons">clear</span> Очистить журнал
+              </button>
+            </div>
+            <div class="card-body">
+              <div class="filter-controls mb-md">
+                <h3>Фильтры</h3>
+                <div class="d-flex gap-md flex-wrap">
+                  <div class="form-group">
+                    <label for="log-filter-event">Тип события</label>
+                    <select id="log-filter-event" class="form-control">
+                      <option value="">Все события</option>
+                      <option value="new_order">Новый заказ</option>
+                      <option value="new_service">Сервисный запрос</option>
+                      <option value="test_print">Тестовая печать</option>
+                    </select>
+                  </div>
+                  
+                  <div class="form-group">
+                    <label for="log-filter-status">Статус</label>
+                    <select id="log-filter-status" class="form-control">
+                      <option value="">Все статусы</option>
+                      <option value="success">Успешно</option>
+                      <option value="error">Ошибка</option>
+                    </select>
+                  </div>
+                  
+                  <div class="form-group">
+                    <label for="log-filter-date-start">Дата начала</label>
+                    <input type="date" id="log-filter-date-start" class="form-control">
+                  </div>
+                  
+                  <div class="form-group">
+                    <label for="log-filter-date-end">Дата окончания</label>
+                    <input type="date" id="log-filter-date-end" class="form-control">
+                  </div>
+                </div>
+                
+                <div class="form-actions">
+                  <button id="apply-log-filter" class="btn btn-primary">
+                    <span class="material-icons">filter_list</span> Применить фильтр
+                  </button>
+                  <button id="clear-log-filter" class="btn">
+                    <span class="material-icons">clear_all</span> Сбросить фильтр
+                  </button>
+                </div>
+              </div>
+              
+              <div class="table-container">
+                <table id="logs-table">
+                  <thead>
+                    <tr>
+                      <th>Дата/время</th>
+                      <th>Событие</th>
+                      <th>Шаблон</th>
+                      <th>Статус</th>
+                      <th>Дополнительно</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <!-- Логи будут добавлены через JavaScript -->
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Вкладка настроек -->
+        <div id="settings-tab" class="tab-content">
+          <div class="card">
+            <div class="card-header">
+              <h2>Общие настройки</h2>
+            </div>
+            <div class="card-body">
+              <div class="form-group">
+                <label>Тема приложения</label>
+                <div class="theme-selector">
+                  <label class="theme-option">
+                    <input type="radio" name="theme" value="system" checked>
+                    <div class="theme-preview system-theme">
+                      <span class="material-icons">computer</span>
+                    </div>
+                    <span>Системная</span>
+                  </label>
+                  <label class="theme-option">
+                    <input type="radio" name="theme" value="light">
+                    <div class="theme-preview light-theme">
+                      <span class="material-icons">light_mode</span>
+                    </div>
+                    <span>Светлая</span>
+                  </label>
+                  <label class="theme-option">
+                    <input type="radio" name="theme" value="dark">
+                    <div class="theme-preview dark-theme">
+                      <span class="material-icons">dark_mode</span>
+                    </div>
+                    <span>Темная</span>
+                  </label>
+                </div>
+              </div>
+              
+              <div class="form-group">
+                <label for="language-select">Язык приложения</label>
+                <select id="language-select" class="form-control">
+                  <option value="ru">Русский</option>
+                  <option value="en">English</option>
+                  <option value="uz">O'zbek</option>
+                </select>
+              </div>
+              
+              <div class="form-group">
+                <label class="form-check">
+                  <input type="checkbox" id="start-with-windows">
+                  <span>Запускать при старте Windows</span>
+                </label>
+              </div>
+              
+              <div class="form-group">
+                <label class="form-check">
+                  <input type="checkbox" id="minimize-to-tray">
+                  <span>Сворачивать в трей</span>
+                </label>
+              </div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-header">
+              <h2>О программе</h2>
+            </div>
+            <div class="card-body">
+              <div class="about-app">
+                <div class="app-logo">
+                  <img src="assets/logo.svg" alt="Retro Cafe" width="80">
+                </div>
+                <div class="app-info">
+                  <h3>Retro Cafe - Управление принтером</h3>
+                  <p>Версия 1.0.0</p>
+                  <p class="text-muted">© 2023 Retro Cafe. Все права защищены.</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Контейнер для уведомлений -->
+  <div class="toast-container"></div>
+
+  <script src="renderer.js"></script>
+</body>
+</html>

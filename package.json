@@ -1,24 +1,22 @@
 {
-  "name": "retro-cafe-app",
+  "name": "retro-cafe-printer",
   "version": "1.0.0",
+  "description": "Приложение для управления принтером чеков Retro Cafe",
   "main": "main.js",
   "scripts": {
-    "start": "set NODE_OPTIONS=--enable-source-maps --no-warnings && set NODE_ICU_DATA=node_modules/full-icu && electron .",
-    "build": "npx @electron/packager . printerApp --platform=win32 --arch=x64 --out=dist --overwrite",
-    "build-all": "npx @electron/packager . printerApp --all --out=dist --overwrite"
+    "start": "electron .",
+    "package": "electron-packager . retro-cafe-printer --platform=win32 --arch=x64 --out=dist/ --icon=assets/icon.ico --overwrite"
+  },
+  "author": "Retro Cafe",
+  "license": "ISC",
+  "devDependencies": {
+    "electron": "^25.0.0",
+    "electron-packager": "^17.1.1"
   },
   "dependencies": {
-    "child_process": "^1.0.2",
-    "dotenv": "^17.2.1",
-    "electron": "^37.2.6",
-    "electron-store": "^10.1.0",
+    "electron-store": "^8.1.0",
     "escpos": "^3.0.0-alpha.6",
     "escpos-network": "^3.0.0-alpha.5",
-    "fs": "^0.0.1-security",
-    "path": "^0.12.7",
-    "ws": "^8.18.3"
-  },
-  "devDependencies": {
-    "@electron/packager": "^18.4.0"
+    "socket.io-client": "^4.6.1"
   }
 }
