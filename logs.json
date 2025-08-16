@@ -1,0 +1,38 @@
+[
+  {
+    "time": "2025-08-16T08:07:36.997Z",
+    "eventType": "new_order",
+    "templateName": "Шаблон заказа",
+    "status": "success"
+  },
+  {
+    "time": "2025-08-16T08:07:37.092Z",
+    "eventType": "new_order",
+    "templateName": "Шаблон заказа",
+    "status": "success"
+  },
+  {
+    "time": "2025-08-16T08:14:40.035Z",
+    "eventType": "new_order",
+    "templateName": "Шаблон заказа",
+    "status": "success"
+  },
+  {
+    "time": "2025-08-16T08:14:40.056Z",
+    "eventType": "new_order",
+    "templateName": "Шаблон заказа",
+    "status": "success"
+  },
+  {
+    "time": "2025-08-16T08:16:07.965Z",
+    "eventType": "new_order",
+    "templateName": "Шаблон заказа",
+    "status": "success"
+  },
+  {
+    "time": "2025-08-16T08:16:07.978Z",
+    "eventType": "new_order",
+    "templateName": "Шаблон заказа",
+    "status": "success"
+  }
+]

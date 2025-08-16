@@ -1,0 +1,10 @@
+{
+  "new_order": {
+    "name": "Шаблон заказа",
+    "content": "RETRO CAFE\n--------------------\nЗАКАЗ #{id}\nДата: {date}\n\nТОВАРЫ:\n{products}\n\nИТОГО: {totalAmount} UZS\nОПЛАЧЕНО: {paidAmount} UZS\nДОЛГ: {debtAmount} UZS\n\nСпособ оплаты: {paymentType}\nСтатус: {status}\n\nСПАСИБО ЗА ПОКУПКУ!\n--------------------"
+  },
+  "new_service": {
+    "name": "Шаблон сервисного запроса",
+    "content": "RETRO CAFE\n--------------------\nСЕРВИС #{id}\nДата: {date}\n\nТип: {serviceType}\nОписание: {description}\n\nЦена: {price} UZS\n\nСтатус: {status}\n\nСПАСИБО ЗА ОБРАЩЕНИЕ!\n--------------------"
+  }
+}
