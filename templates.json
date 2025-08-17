@@ -1,10 +1,236 @@
 {
   "new_order": {
-    "name": "Шаблон заказа",
-    "content": "RETRO CAFE\n--------------------\nЗАКАЗ #{id}\nДата: {date}\n\nТОВАРЫ:\n{products}\n\nИТОГО: {totalAmount} UZS\nОПЛАЧЕНО: {paidAmount} UZS\nДОЛГ: {debtAmount} UZS\n\nСпособ оплаты: {paymentType}\nСтатус: {status}\n\nСПАСИБО ЗА ПОКУПКУ!\n--------------------"
-  },
-  "new_service": {
-    "name": "Шаблон сервисного запроса",
-    "content": "RETRO CAFE\n--------------------\nСЕРВИС #{id}\nДата: {date}\n\nТип: {serviceType}\nОписание: {description}\n\nЦена: {price} UZS\n\nСтатус: {status}\n\nСПАСИБО ЗА ОБРАЩЕНИЕ!\n--------------------"
+    "name": "Nakladnoy cheki",
+    "segments": [
+      {
+        "content": "UMA-OIL Lola",
+        "settings": {
+          "align": "center",
+          "font": "b",
+          "size": 2,
+          "bold": true,
+          "underline": false,
+          "italic": false
+        }
+      },
+      {
+        "content": "================================================",
+        "settings": {
+          "align": "center",
+          "font": "a",
+          "size": 0,
+          "bold": false,
+          "underline": false,
+          "italic": false
+        }
+      },
+      {
+        "content": "NAKLADNOY",
+        "settings": {
+          "align": "center",
+          "font": "b",
+          "size": 1,
+          "bold": true,
+          "underline": true,
+          "italic": false
+        }
+      },
+      {
+        "content": "{date}",
+        "settings": {
+          "align": "center",
+          "font": "a",
+          "size": 0,
+          "bold": false,
+          "underline": false,
+          "italic": false
+        }
+      },
+      {
+        "content": "Chek raqami: #{orderIndex}",
+        "settings": {
+          "align": "center",
+          "font": "a",
+          "size": 0,
+          "bold": false,
+          "underline": false,
+          "italic": false
+        }
+      },
+      {
+        "content": "================================================",
+        "settings": {
+          "align": "left",
+          "font": "a",
+          "size": 0,
+          "bold": false,
+          "underline": false,
+          "italic": false
+        }
+      },
+      {
+        "content": "Mijoz: {clientInfo}",
+        "settings": {
+          "align": "left",
+          "font": "a",
+          "size": 0,
+          "bold": false,
+          "underline": false,
+          "italic": false
+        }
+      },
+      {
+        "content": "================================================",
+        "settings": {
+          "align": "left",
+          "font": "a",
+          "size": 0,
+          "bold": false,
+          "underline": false,
+          "italic": false
+        }
+      },
+      {
+        "content": "MAHSULOTLAR:",
+        "settings": {
+          "align": "center",
+          "font": "b",
+          "size": 1,
+          "bold": true,
+          "underline": false,
+          "italic": false
+        }
+      },
+      {
+        "content": "{products}",
+        "settings": {
+          "align": "left",
+          "font": "a",
+          "size": 0,
+          "bold": false,
+          "underline": false,
+          "italic": false
+        }
+      },
+      {
+        "content": "================================================",
+        "settings": {
+          "align": "left",
+          "font": "a",
+          "size": 0,
+          "bold": false,
+          "underline": false,
+          "italic": false
+        }
+      },
+      {
+        "content": "JAMI TO'LOV:",
+        "settings": {
+          "align": "center",
+          "font": "b",
+          "size": 1,
+          "bold": true,
+          "underline": false,
+          "italic": false
+        }
+      },
+      {
+        "content": "Chegirmalarni hisobga olgan holda",
+        "settings": {
+          "align": "center",
+          "font": "a",
+          "size": 0,
+          "bold": false,
+          "underline": false,
+          "italic": true
+        }
+      },
+      {
+        "content": "UZS: {totalAmountUzs} so'm",
+        "settings": {
+          "align": "left",
+          "font": "b",
+          "size": 1,
+          "bold": true,
+          "underline": false,
+          "italic": false
+        }
+      },
+      {
+        "content": "USD: {totalAmountUsd} $",
+        "settings": {
+          "align": "left",
+          "font": "b",
+          "size": 1,
+          "bold": true,
+          "underline": false,
+          "italic": false
+        }
+      },
+      {
+        "content": "To'langan: {paidAmountUzs} so'm / {paidAmountUsd} $",
+        "settings": {
+          "align": "left",
+          "font": "a",
+          "size": 0,
+          "bold": false,
+          "underline": false,
+          "italic": false
+        }
+      },
+      {
+        "content": "{hasDebtUzs:if}Qarz: {debtAmountUzs} so'm{hasDebtUzs:endif}{hasDebtUsd:if} / {debtAmountUsd} ${hasDebtUsd:endif}",
+        "settings": {
+          "align": "left",
+          "font": "a",
+          "size": 0,
+          "bold": true,
+          "underline": false,
+          "italic": false
+        }
+      },
+      {
+        "content": "================================================",
+        "settings": {
+          "align": "left",
+          "font": "a",
+          "size": 0,
+          "bold": false,
+          "underline": false,
+          "italic": false
+        }
+      },
+      {
+        "content": "{hasReturnDate:if}Qarz qaytarilish sanasi: {returnDate}{hasReturnDate:endif}",
+        "settings": {
+          "align": "left",
+          "font": "a",
+          "size": 0,
+          "bold": false,
+          "underline": false,
+          "italic": false
+        }
+      },
+      {
+        "content": "{hasNotes:if}Izoh: {notes}{hasNotes:endif}",
+        "settings": {
+          "align": "left",
+          "font": "a",
+          "size": 0,
+          "bold": false,
+          "underline": false,
+          "italic": false
+        }
+      }
+    ],
+    "globalSettings": {
+      "beep": {
+        "enabled": false,
+        "count": 1,
+        "duration": 100
+      },
+      "encoding": "cp866",
+      "paperCut": true
+    }
   }
 }

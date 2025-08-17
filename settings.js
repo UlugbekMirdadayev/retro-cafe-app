@@ -4,7 +4,8 @@ const path = require("path");
 const settingsFile = path.join(__dirname, "settings.json");
 const DEFAULT_SETTINGS = { 
   printerIp: "192.168.123.100",
-  socketUrl: "http://localhost:8080"
+  socketUrl: "http://localhost:8080",
+  language: "ru" // Язык по умолчанию
 };
 
 function getSettings() {
