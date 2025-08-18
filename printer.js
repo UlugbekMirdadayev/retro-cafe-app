@@ -1,6 +1,7 @@
 const escpos = require("escpos");
 escpos.Network = require("escpos-network");
 const settings = require("./settings");
+const printerUtils = require("./printerUtils");
 
 function getPrinterDevice() {
   const ip = settings.getSettings().printerIp;
@@ -15,110 +16,140 @@ function getPrinterDevice() {
  * @returns {Promise<boolean>} - Результат печати
  */
 function printReceipt(template, data, templateSettings = {}) {
-  return new Promise((resolve, reject) => {
-    try {
-      // Получаем IP-адрес принтера из настроек
-      const printerSettings = settings.getSettings();
-      console.log("Current settings:", printerSettings);
+  return new Promise(async (resolve, reject) => {
+    let device = null;
 
-      const ip = printerSettings.printerIp;
-      if (!ip) {
-        console.error("Printer IP not found in settings");
-        return reject(new Error("IP-адрес принтера не указан в настройках"));
+    try {
+      console.log("=== Starting Print Receipt ===");
+      
+      // Validate printer settings first
+      const settingsValidation = printerUtils.validatePrinterSettings();
+      if (!settingsValidation.success) {
+        return reject(settingsValidation.error);
       }
 
+      // Validate template structure
+      const templateValidation = printerUtils.validateTemplateStructure(template);
+      if (!templateValidation.success) {
+        return reject(templateValidation.error);
+      }
+
+      // Validate template data
+      const dataValidation = printerUtils.validateTemplateData(data);
+      if (!dataValidation.success) {
+        return reject(dataValidation.error);
+      }
+
+      const printerSettings = settings.getSettings();
+      const ip = printerSettings.printerIp;
+      
       console.log(`Connecting to printer at: ${ip}:9100`);
 
-      // Таймаут для операции подключения
-      const connectionTimeout = setTimeout(() => {
-        console.error("Printer connection timeout");
-        reject(new Error("Таймаут подключения к принтеру"));
-      }, 10000);
+      // Prepare template data
+      console.log("Preparing template data");
+      const preparedData = prepareTemplateData(data);
 
-      // Создаем устройство
-      let device = null;
+      // Create device with proper error handling
       try {
         device = new escpos.Network(ip, 9100);
         console.log("Network device created");
       } catch (deviceError) {
-        clearTimeout(connectionTimeout);
-        console.error("Error creating printer device:", deviceError);
-        return reject(
-          new Error(`Ошибка создания подключения: ${deviceError.message}`)
+        throw printerUtils.createError(
+          printerUtils.ErrorTypes.DEVICE,
+          `Error creating printer device: ${deviceError.message}`,
+          'Printer qurilmasini yaratishda xatolik',
+          deviceError
         );
       }
 
-      // Подготавливаем данные перед отправкой в шаблон
-      console.log("Preparing template data");
-      const preparedData = prepareTemplateData(data);
+      // Open connection with timeout
+      const openConnection = () => {
+        return new Promise((resolveConn, rejectConn) => {
+          device.open(function (err) {
+            if (err) {
+              const errorType = printerUtils.isRecoverableError(err) 
+                ? printerUtils.ErrorTypes.CONNECTION 
+                : printerUtils.ErrorTypes.DEVICE;
+              
+              rejectConn(printerUtils.createError(
+                errorType,
+                `Error opening printer device: ${err.message}`,
+                'Printerga ulanishda xatolik',
+                err
+              ));
+            } else {
+              resolveConn();
+            }
+          });
+        });
+      };
 
-      // Открываем соединение с принтером
-      device.open(function (err) {
-        clearTimeout(connectionTimeout);
+      // Open connection with timeout
+      await printerUtils.withConnectionTimeout(
+        openConnection, 
+        10000, 
+        'Printer ulanishi'
+      );
 
-        if (err) {
-          console.error("Error opening printer device:", err);
-          return reject(
-            new Error(`Ошибка подключения к принтеру: ${err.message}`)
-          );
-        }
+      console.log("Printer device opened successfully, initializing printer...");
+      
+      const printer = new escpos.Printer(device);
+      console.log("Printer initialized, processing template...");
 
-        try {
-          console.log(
-            "Printer device opened successfully, initializing printer..."
-          );
-          const printer = new escpos.Printer(device);
+      // Process template with improved error handling
+      if (template.segments && Array.isArray(template.segments)) {
+        console.log("Processing template with segments:", template.segments.length);
+        await printTemplateSegments(printer, template, preparedData);
+      } else {
+        console.log("Processing legacy template format");
+        applyTemplateSettings(printer, templateSettings);
+        const text = renderTemplate(template.content || template, preparedData);
+        printer.text(text);
+      }
 
-          console.log("Printer initialized, processing template...");
+      // Add line at the end
+      printer.drawLine();
 
-          // Проверяем новый или старый формат шаблона
-          if (template.segments && Array.isArray(template.segments)) {
-            // Новый формат с сегментами
-            console.log("Processing template with segments:", template.segments.length);
-            printTemplateSegments(printer, template, preparedData);
-          } else {
-            // Старый формат для обратной совместимости
-            console.log("Processing legacy template format");
-            // Применяем настройки шаблона
-            applyTemplateSettings(printer, templateSettings);
-            
-            // Обрабатываем шаблон
-            const text = renderTemplate(template.content || template, preparedData);
-            printer.text(text);
-          }
+      // Check beep settings
+      const globalSettings = template.globalSettings || templateSettings;
+      if (globalSettings.beep && globalSettings.beep.enabled) {
+        const count = parseInt(globalSettings.beep.count) || 1;
+        const time = parseInt(globalSettings.beep.duration || globalSettings.beep.time) || 100;
+        printer.beep(count, time);
+      }
 
-          // Добавляем линию в конце
-          printer.drawLine();
-
-          // Проверяем настройки звукового сигнала
-          const globalSettings = template.globalSettings || templateSettings;
-          if (globalSettings.beep && globalSettings.beep.enabled) {
-            const count = parseInt(globalSettings.beep.count) || 1;
-            const time = parseInt(globalSettings.beep.duration || globalSettings.beep.time) || 100;
-            printer.beep(count, time);
-          } else {
-            // Без звукового сигнала
-            console.log("Beep disabled in template settings");
-          }
-
-          // Отрезаем чек и закрываем соединение
+      // Cut and close
+      const cutAndClose = () => {
+        return new Promise((resolveCut) => {
           printer.cut().close(function () {
             console.log("Print job completed successfully");
-            resolve(true);
+            resolveCut(true);
           });
-        } catch (printError) {
-          console.error("Error during print operation:", printError);
-          try {
-            device.close();
-          } catch (closeError) {
-            console.warn("Error closing device:", closeError);
-          }
-          reject(new Error(`Ошибка печати: ${printError.message}`));
-        }
-      });
+        });
+      };
+
+      const result = await cutAndClose();
+      resolve(result);
+
     } catch (error) {
-      console.error("General error in printReceipt:", error);
-      reject(new Error(`Общая ошибка печати: ${error.message}`));
+      console.error("Error in printReceipt:", error);
+      
+      // Ensure device cleanup
+      if (device) {
+        await printerUtils.safeDeviceCleanup(device);
+      }
+
+      // Convert generic errors to printer utils format
+      if (!error.type) {
+        error = printerUtils.createError(
+          printerUtils.ErrorTypes.DEVICE,
+          error.message || 'Unknown printing error',
+          'Chop etishda noma\'lum xatolik',
+          error
+        );
+      }
+
+      reject(error);
     }
   });
 }
@@ -129,40 +160,46 @@ function printReceipt(template, data, templateSettings = {}) {
  * @param {Object} template - Шаблон с сегментами
  * @param {Object} data - Данные для подстановки
  */
-function printTemplateSegments(printer, template, data) {
+async function printTemplateSegments(printer, template, data) {
   console.log("Starting segment-based printing");
   console.log(`Template has ${template.segments.length} segments`);
   
   if (!template.segments || !Array.isArray(template.segments)) {
-    console.error("Template has no segments or invalid segments format");
-    throw new Error("Шаблон не содержит сегментов для печати");
+    throw printerUtils.createError(
+      printerUtils.ErrorTypes.TEMPLATE,
+      "Template has no segments or invalid segments format",
+      "Shablon segmentlari noto'g'ri formatda"
+    );
   }
 
   let hasContent = false;
   let processedSegments = 0;
   let totalSegments = template.segments.length;
   let skippedConditionalSegments = 0;
+  let errorSegments = [];
   
-  template.segments.forEach((segment, index) => {
+  for (let index = 0; index < template.segments.length; index++) {
+    const segment = template.segments[index];
+    
     try {
       console.log(`\n--- Processing segment ${index + 1}/${totalSegments} ---`);
       
-      // Пропускаем пустые сегменты
+      // Skip empty segments
       if (!segment.content || segment.content.trim() === '') {
         console.log(`Skipping empty segment ${index}`);
-        return;
+        continue;
       }
 
       console.log(`Segment content: "${segment.content}"`);
 
-      // Обрабатываем содержимое сегмента
+      // Process segment content
       let processedContent = renderTemplateString(segment.content, data);
       
       console.log(`Processed content: "${processedContent}"`);
       
-      // Если после обработки содержимое пустое, проверяем, есть ли условные блоки
+      // Check if content is empty after processing
       if (!processedContent || processedContent.trim() === '') {
-        // Проверяем, содержит ли сегмент только условные блоки
+        // Check if segment contains only conditional blocks
         const hasConditionals = segment.content.includes(':if}') && segment.content.includes(':endif}');
         if (hasConditionals) {
           console.log(`Segment ${index} contains conditionals that evaluated to empty - this is OK`);
@@ -170,46 +207,71 @@ function printTemplateSegments(printer, template, data) {
         } else {
           console.log(`Segment ${index} - empty after processing (no conditionals)`);
         }
-        return;
+        continue;
       }
 
       hasContent = true;
       processedSegments++;
 
-      // Применяем настройки сегмента
+      // Apply segment settings
       if (segment.settings) {
         console.log(`Applying settings for segment ${index}:`, segment.settings);
         applyTemplateSettings(printer, segment.settings);
       }
 
-      // Печатаем содержимое сегмента
+      // Print segment content
       printer.text(processedContent + '\n');
       console.log(`Segment ${index} printed successfully`);
       
     } catch (segmentError) {
       console.error(`Error processing segment ${index}:`, segmentError);
-      // Продолжаем печать следующих сегментов при ошибке
+      
+      errorSegments.push({
+        index,
+        error: segmentError.message || 'Unknown segment error'
+      });
+      
+      // Continue with next segments to avoid complete failure
+      continue;
     }
-  });
+  }
   
-  console.log(`\nProcessed ${processedSegments} segments, skipped conditional: ${skippedConditionalSegments}, hasContent: ${hasContent}`);
+  console.log(`\nProcessed ${processedSegments} segments, skipped conditional: ${skippedConditionalSegments}, errors: ${errorSegments.length}, hasContent: ${hasContent}`);
   
-  // Если у нас есть хотя бы один сегмент с содержимым, считаем это успехом
-  // Даже если другие сегменты пустые из-за условий
+  // Report errors but don't fail completely if some segments worked
+  if (errorSegments.length > 0) {
+    console.warn(`Template processing had ${errorSegments.length} segment errors:`, errorSegments);
+  }
+  
+  // Check if we have any printable content
   if (!hasContent) {
-    // Дополнительная проверка: если большинство сегментов были условными и пустыми, 
-    // но у нас есть основные сегменты (заголовок, линии и т.д.), это нормально
     const nonConditionalSegments = totalSegments - skippedConditionalSegments;
+    
     if (nonConditionalSegments > 0 && processedSegments === 0) {
-      console.error("Template produced no printable content - all non-conditional segments are empty");
-      throw new Error("Шаблон не содержит текста после обработки");
+      throw printerUtils.createError(
+        printerUtils.ErrorTypes.TEMPLATE,
+        "Template produced no printable content - all non-conditional segments are empty",
+        "Shablon chop qilinadigan mazmun yaratmadi"
+      );
     } else if (totalSegments === skippedConditionalSegments) {
-      console.warn("All segments are conditional and empty - template needs basic content");
-      throw new Error("Все сегменты шаблона условные и пусты");
+      throw printerUtils.createError(
+        printerUtils.ErrorTypes.TEMPLATE,
+        "All segments are conditional and empty - template needs basic content",
+        "Barcha segmentlar shartli va bo'sh"
+      );
     }
   }
   
   console.log("Finished processing all segments");
+  
+  // Return processing statistics
+  return {
+    processedSegments,
+    skippedConditionalSegments,
+    totalSegments,
+    errorSegments: errorSegments.length,
+    hasContent
+  };
 }
 
 /**
@@ -272,62 +334,105 @@ function applyTemplateSettings(printer, templateSettings) {
  */
 function previewTemplate(template, data, templateSettings = {}) {
   try {
-    // Подготавливаем данные перед отправкой в шаблон
+    console.log("=== Starting Template Preview ===");
+    
+    // Validate inputs
+    const templateValidation = printerUtils.validateTemplateStructure(template);
+    if (!templateValidation.success) {
+      console.error("Template validation failed:", templateValidation.error);
+      return `Preview xatosi: ${templateValidation.error.userMessage || templateValidation.error.message}`;
+    }
+
+    const dataValidation = printerUtils.validateTemplateData(data);
+    if (!dataValidation.success) {
+      console.error("Data validation failed:", dataValidation.error);
+      return `Ma'lumotlar xatosi: ${dataValidation.error.userMessage || dataValidation.error.message}`;
+    }
+
+    // Prepare template data
     const preparedData = prepareTemplateData(data);
     let result = "";
+    let processedSegments = 0;
 
-    // Проверяем новый или старый формат шаблона
+    // Check new or old template format
     if (template.segments && Array.isArray(template.segments)) {
-      // Новый формат с сегментами
+      // New format with segments
       console.log("Previewing template with segments");
       
       template.segments.forEach((segment, index) => {
-        // Пропускаем пустые сегменты
-        if (!segment.content || segment.content.trim() === '') {
-          return;
-        }
+        try {
+          // Skip empty segments
+          if (!segment.content || segment.content.trim() === '') {
+            console.log(`Preview: Skipping empty segment ${index}`);
+            return;
+          }
 
-        // Обрабатываем содержимое сегмента
-        let processedContent = renderTemplateString(segment.content, preparedData);
-        
-        // Если после обработки содержимое пустое, пропускаем сегмент
-        if (!processedContent || processedContent.trim() === '') {
-          return;
-        }
+          // Process segment content
+          let processedContent = renderTemplateString(segment.content, preparedData);
+          
+          // Skip if content is empty after processing
+          if (!processedContent || processedContent.trim() === '') {
+            console.log(`Preview: Segment ${index} empty after processing`);
+            return;
+          }
 
-        // Применяем форматирование для превью
-        if (segment.settings) {
-          processedContent = formatPreviewText(processedContent, segment.settings);
-        }
+          processedSegments++;
 
-        result += processedContent + '\n';
+          // Apply formatting for preview
+          if (segment.settings) {
+            processedContent = formatPreviewText(processedContent, segment.settings);
+          }
+
+          result += processedContent + '\n';
+        } catch (segmentError) {
+          console.error(`Preview error in segment ${index}:`, segmentError);
+          result += `[Segment ${index} xatosi: ${segmentError.message}]\n`;
+        }
       });
     } else {
-      // Старый формат для обратной совместимости
+      // Legacy format for backwards compatibility
       console.log("Previewing legacy template format");
-      let text = renderTemplateString(template.content || template, preparedData);
+      try {
+        let text = renderTemplateString(template.content || template, preparedData);
 
-      // Если в настройках указано выравнивание, применяем его
-      if (templateSettings.align === "center") {
-        text = centerTextToWidth(text, 48);
-      } else if (templateSettings.align === "right") {
-        text = rightAlignTextToWidth(text, 48);
+        // Apply alignment if specified in settings
+        if (templateSettings.align === "center") {
+          text = centerTextToWidth(text, 48);
+        } else if (templateSettings.align === "right") {
+          text = rightAlignTextToWidth(text, 48);
+        }
+
+        result = text;
+        processedSegments = 1;
+      } catch (legacyError) {
+        console.error("Legacy template preview error:", legacyError);
+        result = `Legacy shablon xatosi: ${legacyError.message}`;
       }
-
-      result = text;
     }
 
-    // Убираем лишние переносы строк в конце
+    // Remove extra newlines at the end
     result = result.replace(/\n+$/, '');
     
-    // Добавляем эмуляцию отреза чека
+    if (processedSegments === 0) {
+      result = "Shablon bo'sh yoki barcha segmentlar shartli va bo'sh\n(Bu normal holat bo'lishi mumkin)";
+    }
+    
+    // Add receipt cut simulation
     result += "\n" + "═".repeat(48) + "\n";
-    result += " ".repeat(15) + "✂ ОТРЕЗАТЬ ЗДЕСЬ ✂";
+    result += " ".repeat(15) + "✂ Bu yerdan kesish ✂";
 
+    console.log(`Preview completed: ${processedSegments} segments processed`);
     return result;
+
   } catch (error) {
     console.error("Error in previewTemplate:", error);
-    return `Ошибка предпросмотра: ${error.message}`;
+    
+    // Handle structured errors
+    if (error.type) {
+      return `Preview xatosi: ${error.userMessage || error.message}`;
+    }
+    
+    return `Preview xatosi: ${error.message || 'Noma\'lum xatolik'}`;
   }
 }
 
@@ -447,127 +552,163 @@ function rightAlignText(text) {
 function testTemplateProcessing() {
   console.log("=== Testing Template Processing (No Print) ===");
   
-  // Создаем тестовые данные
-  const testData = {
-    id: "TEST-123",
-    index: "A001234",
-    createdAt: new Date().toISOString(),
-    products: [
-      {
-        product: {
-          name: "Test Product 1",
-        },
-        quantity: 2,
-        price: 25000,
-        currency: "UZS",
-      },
-      {
-        product: {
-          name: "Test Product 2",
-        },
-        quantity: 1,
-        price: 12000,
-        currency: "UZS",
-      }
-    ],
-    branch: {
-      name: "UMA-OIL LOLA",
-    },
-    client: {
-      fullName: "Test Customer",
-      phone: "+998 90 123 45 67",
-    },
-    totalAmount: {
-      uzs: 62000,
-      usd: 5.0,
-    },
-    paidAmount: {
-      uzs: 40000,  // Меньше чем общая сумма, чтобы создать долг
-      usd: 3.0,    // Меньше чем общая сумма в USD
-    },
-    debtAmount: {
-      uzs: 22000,  // Есть долг в сумах
-      usd: 2.0,    // Есть долг в долларах
-    },
-    notes: "Test template processing with debt and notes", // Есть заметки
-    date_returned: new Date(Date.now() + 86400000).toISOString(), // Есть дата возврата
-    paymentType: "cash",
-    status: "completed"
-  };
-
   try {
-    // Загружаем шаблоны
-    const templates = require("./templates.json");
-    const orderTemplate = templates.new_order;
+    // Try to get cached template first
+    let orderTemplate = printerUtils.getCachedTemplate('new_order');
     
     if (!orderTemplate) {
-      throw new Error("Order template not found");
+      console.log("Loading template from file...");
+      const templates = require("./templates.json");
+      orderTemplate = templates.new_order;
+      
+      if (!orderTemplate) {
+        throw printerUtils.createError(
+          printerUtils.ErrorTypes.TEMPLATE,
+          "Order template not found",
+          "Buyurtma shabloni topilmadi"
+        );
+      }
+      
+      // Cache the template
+      printerUtils.cacheTemplate('new_order', orderTemplate);
+    } else {
+      console.log("Using cached template");
+    }
+    
+    // Validate template structure
+    const templateValidation = printerUtils.validateTemplateStructure(orderTemplate);
+    if (!templateValidation.success) {
+      throw templateValidation.error;
     }
     
     console.log("Template loaded:", orderTemplate.name);
     
-    // Подготавливаем данные
+    // Create comprehensive test data
+    const testData = getTestTemplateData();
+    
+    // Validate test data
+    const dataValidation = printerUtils.validateTemplateData(testData, ['id', 'products']);
+    if (!dataValidation.success) {
+      throw dataValidation.error;
+    }
+    
+    // Prepare data
     const preparedData = prepareTemplateData(testData);
     
-    // Симулируем обработку сегментов
+    // Process segments with improved validation
     if (orderTemplate.segments && Array.isArray(orderTemplate.segments)) {
       console.log("\n=== Processing Template Segments ===");
       let hasContent = false;
       let processedSegments = 0;
       let skippedConditionalSegments = 0;
+      let errorSegments = 0;
       
       orderTemplate.segments.forEach((segment, index) => {
-        if (!segment.content || segment.content.trim() === '') {
-          console.log(`Segment ${index}: EMPTY - skipping`);
-          return;
-        }
-        
-        const processedContent = renderTemplateString(segment.content, preparedData);
-        
-        if (processedContent && processedContent.trim() !== '') {
-          console.log(`Segment ${index}: OK - "${processedContent.substring(0, 50)}..."`);
-          hasContent = true;
-          processedSegments++;
-        } else {
-          // Проверяем, содержит ли сегмент только условные блоки
-          const hasConditionals = segment.content.includes(':if}') && segment.content.includes(':endif}');
-          if (hasConditionals) {
-            console.log(`Segment ${index}: CONDITIONAL EMPTY (OK) - "${segment.content.substring(0, 50)}..."`);
-            skippedConditionalSegments++;
-          } else {
-            console.log(`Segment ${index}: EMPTY AFTER PROCESSING - "${segment.content.substring(0, 50)}..."`);
+        try {
+          if (!segment.content || segment.content.trim() === '') {
+            console.log(`Segment ${index}: EMPTY - skipping`);
+            return;
           }
+          
+          const processedContent = renderTemplateString(segment.content, preparedData);
+          
+          if (processedContent && processedContent.trim() !== '') {
+            console.log(`Segment ${index}: OK - "${processedContent.substring(0, 50)}..."`);
+            hasContent = true;
+            processedSegments++;
+          } else {
+            // Check for conditional blocks
+            const hasConditionals = segment.content.includes(':if}') && segment.content.includes(':endif}');
+            if (hasConditionals) {
+              console.log(`Segment ${index}: CONDITIONAL EMPTY (OK) - "${segment.content.substring(0, 50)}..."`);
+              skippedConditionalSegments++;
+            } else {
+              console.log(`Segment ${index}: EMPTY AFTER PROCESSING - "${segment.content.substring(0, 50)}..."`);
+            }
+          }
+        } catch (segmentError) {
+          console.error(`Segment ${index} processing error:`, segmentError);
+          errorSegments++;
         }
       });
       
-      console.log(`\nSummary: ${processedSegments} with content, ${skippedConditionalSegments} conditional empty`);
+      console.log(`\nSummary: ${processedSegments} with content, ${skippedConditionalSegments} conditional empty, ${errorSegments} errors`);
+      
+      if (errorSegments > 0) {
+        return {
+          success: false,
+          message: `Template processing failed: ${errorSegments} segments had errors`,
+          userMessage: `Shablon ishlov berishda ${errorSegments} ta segment xatosi`
+        };
+      }
       
       if (hasContent) {
         console.log("\n✅ Template processing successful - content found");
-        return { success: true, message: "Template processed successfully" };
+        return { 
+          success: true, 
+          message: "Template processed successfully",
+          userMessage: "Shablon muvaffaqiyatli ishlandi",
+          stats: {
+            processedSegments,
+            skippedConditionalSegments,
+            totalSegments: orderTemplate.segments.length
+          }
+        };
       } else {
         const totalSegments = orderTemplate.segments.length;
         const nonConditionalSegments = totalSegments - skippedConditionalSegments;
         
         if (nonConditionalSegments > 0) {
           console.log("\n❌ Template processing failed - no content in non-conditional segments");
-          return { success: false, message: "No printable content in non-conditional segments" };
+          return { 
+            success: false, 
+            message: "No printable content in non-conditional segments",
+            userMessage: "Shartli bo'lmagan segmentlarda chop qilinadigan mazmun yo'q"
+          };
         } else if (totalSegments === skippedConditionalSegments) {
           console.log("\n⚠️ All segments are conditional and empty - this may be normal");
-          return { success: false, message: "All segments are conditional and empty" };
+          return { 
+            success: false, 
+            message: "All segments are conditional and empty",
+            userMessage: "Barcha segmentlar shartli va bo'sh"
+          };
         } else {
           console.log("\n❌ Template processing failed - no content");
-          return { success: false, message: "No printable content after processing" };
+          return { 
+            success: false, 
+            message: "No printable content after processing",
+            userMessage: "Ishlov berish natijasida chop qilinadigan mazmun yo'q"
+          };
         }
       }
     } else {
       console.log("❌ Template has no segments");
-      return { success: false, message: "Template has no segments" };
+      return { 
+        success: false, 
+        message: "Template has no segments",
+        userMessage: "Shablonda segmentlar yo'q"
+      };
     }
     
   } catch (error) {
     console.error("❌ Template processing error:", error);
-    return { success: false, message: error.message };
+    
+    // Convert to standard format if needed
+    if (!error.type) {
+      error = printerUtils.createError(
+        printerUtils.ErrorTypes.TEMPLATE,
+        error.message || 'Unknown template processing error',
+        'Shablon ishlov berishda noma\'lum xatolik',
+        error
+      );
+    }
+    
+    return { 
+      success: false, 
+      message: error.message,
+      userMessage: error.userMessage,
+      error
+    };
   }
 }
 
@@ -577,104 +718,110 @@ function testTemplateProcessing() {
 function testPrint() {
   console.log("=== Starting Test Print ===");
   
-  // Создаем тестовые данные, совместимые с шаблоном
-  const testData = {
-    id: "TEST-123",
-    index: "A001234",
-    createdAt: new Date().toISOString(),
-    products: [
-      {
-        product: {
-          name: "Lavash mini",
-        },
-        quantity: 2,
-        price: 25000,
-        currency: "UZS",
-      },
-      {
-        product: {
-          name: "Cola 0.5L",
-        },
-        quantity: 1,
-        price: 12000,
-        currency: "UZS",
-      },
-      {
-        product: {
-          name: "Kartoshka fri",
-        },
-        quantity: 1,
-        price: 15000,
-        currency: "UZS",
-      },
-    ],
-    branch: {
-      name: "UMA-OIL LOLA",
-    },
-    client: {
-      fullName: "Test Customer",
-      phone: "+998 90 123 45 67",
-    },
-    totalAmount: {
-      uzs: 52000,
-      usd: 4.2,
-    },
-    paidAmount: {
-      uzs: 30000,  // Создаем долг для тестирования условных блоков
-      usd: 4.2,
-    },
-    debtAmount: {
-      uzs: 22000,  // Есть долг в сумах
-      usd: 0,
-    },
-    notes: "Тестовая печать системы - проверка условных блоков",
-    date_returned: new Date(Date.now() + 86400000).toISOString(),
-    paymentType: "cash",
-    status: "completed"
-  };
-
-  console.log("Test data prepared:", JSON.stringify(testData, null, 2));
-
-  // Используем шаблон с новым форматом сегментов
-  let templates;
   try {
-    templates = require("./templates.json");
-    console.log("Templates loaded successfully");
-    console.log("Available templates:", Object.keys(templates));
-  } catch (templateError) {
-    console.error("Error loading templates:", templateError);
-    throw new Error("Не удалось загрузить шаблоны");
+    // Check if mock printer should be used
+    if (mockPrinter.isEnabled) {
+      console.log("Using mock printer for test print");
+      return testPrintWithMock();
+    }
+
+    // Validate printer settings first
+    const settingsValidation = printerUtils.validatePrinterSettings();
+    if (!settingsValidation.success) {
+      console.error("Printer settings validation failed:", settingsValidation.error);
+      throw settingsValidation.error;
+    }
+
+    // Get test template data
+    const testData = getTestTemplateData();
+    
+    console.log("Test data prepared:", JSON.stringify(testData, null, 2));
+
+    // Load template with caching
+    let orderTemplate = printerUtils.getCachedTemplate('new_order');
+    
+    if (!orderTemplate) {
+      console.log("Loading template from file...");
+      try {
+        const templates = require("./templates.json");
+        orderTemplate = templates.new_order;
+        
+        if (!orderTemplate) {
+          throw printerUtils.createError(
+            printerUtils.ErrorTypes.TEMPLATE,
+            "Order template not found in templates.json",
+            "Buyurtma shabloni topilmadi"
+          );
+        }
+        
+        // Cache the loaded template
+        printerUtils.cacheTemplate('new_order', orderTemplate);
+        console.log("Template cached successfully");
+        
+      } catch (templateError) {
+        throw printerUtils.createError(
+          printerUtils.ErrorTypes.TEMPLATE,
+          `Error loading templates: ${templateError.message}`,
+          'Shablonlarni yuklashda xatolik',
+          templateError
+        );
+      }
+    } else {
+      console.log("Using cached template");
+    }
+
+    // Validate template structure
+    const templateValidation = printerUtils.validateTemplateStructure(orderTemplate);
+    if (!templateValidation.success) {
+      throw templateValidation.error;
+    }
+
+    console.log("Template structure validation passed");
+    console.log(`Using template: ${orderTemplate.name || 'new_order'}`);
+    console.log(`Template has ${orderTemplate.segments.length} segments`);
+
+    // Print with improved error handling
+    return printReceipt(orderTemplate, testData);
+
+  } catch (error) {
+    console.error("Test print failed:", error);
+    
+    // Convert generic errors to printer utils format
+    if (!error.type) {
+      error = printerUtils.createError(
+        printerUtils.ErrorTypes.DEVICE,
+        error.message || 'Unknown test print error',
+        'Test chop etishda noma\'lum xatolik',
+        error
+      );
+    }
+    
+    throw error;
   }
+}
 
-  const orderTemplate = templates.new_order;
-  if (!orderTemplate) {
-    console.error("Order template not found in templates.json");
-    console.error("Available templates:", Object.keys(templates));
-    throw new Error("Шаблон 'new_order' не найден");
+/**
+ * Test print using mock printer for development
+ */
+async function testPrintWithMock() {
+  try {
+    const testData = getTestTemplateData();
+    const templates = require("./templates.json");
+    const orderTemplate = templates.new_order;
+    
+    if (!orderTemplate) {
+      throw printerUtils.createError(
+        printerUtils.ErrorTypes.TEMPLATE,
+        "Order template not found",
+        "Buyurtma shabloni topilmadi"
+      );
+    }
+
+    return await mockPrinter.mockPrintReceipt(orderTemplate, testData);
+  } catch (error) {
+    console.error("Mock test print failed:", error);
+    throw error;
   }
-
-  console.log("Order template structure:", {
-    hasName: !!orderTemplate.name,
-    hasSegments: !!orderTemplate.segments,
-    segmentsCount: orderTemplate.segments ? orderTemplate.segments.length : 0,
-    hasGlobalSettings: !!orderTemplate.globalSettings
-  });
-
-  if (!orderTemplate.segments || !Array.isArray(orderTemplate.segments)) {
-    console.error("Order template has no segments:", orderTemplate);
-    throw new Error("Шаблон не содержит сегментов для печати");
-  }
-
-  if (orderTemplate.segments.length === 0) {
-    console.error("Order template has empty segments array");
-    throw new Error("Шаблон содержит пустой массив сегментов");
-  }
-
-  console.log(`Using template: ${orderTemplate.name || 'new_order'}`);
-  console.log(`Template has ${orderTemplate.segments.length} segments`);
-
-  // Печать с новым форматом
-  return printReceipt(orderTemplate, testData);
 }
 
 function prepareTemplateData(data) {
@@ -845,33 +992,93 @@ function formatNumber(num) {
 }
 
 function testConnection(ip) {
-  return new Promise((resolve, reject) => {
+  return new Promise(async (resolve, reject) => {
+    let device = null;
+    
     try {
-      const testIp = ip || settings.getSettings().printerIp;
-      if (!testIp) {
-        return reject(new Error("IP-адрес принтера не указан"));
+      // Check if mock printer should be used
+      if (mockPrinter.isEnabled) {
+        console.log("Using mock printer for connection test");
+        return resolve(await mockPrinter.mockTestConnection(ip));
       }
 
-      const device = new escpos.Network(testIp, 9100);
+      // Validate settings
+      const settingsValidation = printerUtils.validatePrinterSettings();
+      if (!settingsValidation.success && !ip) {
+        return reject(settingsValidation.error);
+      }
 
-      // Устанавливаем таймаут для подключения
-      const timeout = setTimeout(() => {
-        reject(new Error("Превышено время ожидания подключения к принтеру"));
-      }, 5000);
+      const testIp = ip || settings.getSettings().printerIp;
+      console.log(`Testing connection to printer at: ${testIp}:9100`);
 
-      device.open(function (err) {
-        clearTimeout(timeout);
+      // Create device with proper error handling
+      try {
+        device = new escpos.Network(testIp, 9100);
+      } catch (deviceError) {
+        throw printerUtils.createError(
+          printerUtils.ErrorTypes.DEVICE,
+          `Error creating test device: ${deviceError.message}`,
+          'Test qurilmasini yaratishda xatolik',
+          deviceError
+        );
+      }
 
-        if (err) {
-          reject(new Error(`Ошибка подключения к принтеру: ${err.message}`));
-        } else {
-          // Закрываем соединение после проверки
-          device.close();
-          resolve(true);
-        }
-      });
+      // Test connection with timeout
+      const testConnectionOperation = () => {
+        return new Promise((resolveConn, rejectConn) => {
+          device.open(function (err) {
+            if (err) {
+              const errorType = printerUtils.isRecoverableError(err) 
+                ? printerUtils.ErrorTypes.CONNECTION 
+                : printerUtils.ErrorTypes.DEVICE;
+              
+              rejectConn(printerUtils.createError(
+                errorType,
+                `Connection test failed: ${err.message}`,
+                'Ulanish testi muvaffaqiyatsiz',
+                err
+              ));
+            } else {
+              // Close immediately after successful test
+              try {
+                device.close();
+              } catch (closeError) {
+                console.warn('Error closing test connection:', closeError);
+              }
+              resolveConn(true);
+            }
+          });
+        });
+      };
+
+      const result = await printerUtils.withConnectionTimeout(
+        testConnectionOperation,
+        5000,
+        'Ulanish testi'
+      );
+
+      console.log("Connection test successful");
+      resolve(result);
+
     } catch (error) {
-      reject(new Error(`Ошибка при проверке принтера: ${error.message}`));
+      console.error("Connection test failed:", error);
+      
+      // Ensure cleanup
+      if (device) {
+        await printerUtils.safeDeviceCleanup(device);
+      }
+
+      // Convert generic errors to printer utils format
+      if (!error.type) {
+        error = printerUtils.createError(
+          printerUtils.ErrorTypes.CONNECTION,
+          error.message || 'Unknown connection test error',
+          'Ulanish testida noma\'lum xatolik',
+          error
+        );
+      }
+
+      reject(error);
     }
   });
 }
@@ -953,9 +1160,150 @@ function renderTemplateString(content, data) {
 }
 
 /**
+ * Mock printer for development and testing purposes
+ * Simulates printer operations without actual hardware
+ */
+function createMockPrinter() {
+  return {
+    isEnabled: process.env.NODE_ENV === 'development' || process.env.MOCK_PRINTER === 'true',
+    
+    async mockPrintReceipt(template, data) {
+      console.log("=== MOCK PRINTER: Starting Print Receipt ===");
+      
+      try {
+        // Validate inputs like real printer
+        const templateValidation = printerUtils.validateTemplateStructure(template);
+        if (!templateValidation.success) {
+          throw templateValidation.error;
+        }
+
+        const dataValidation = printerUtils.validateTemplateData(data);
+        if (!dataValidation.success) {
+          throw dataValidation.error;
+        }
+
+        // Simulate processing time
+        await new Promise(resolve => setTimeout(resolve, 1000 + Math.random() * 2000));
+
+        // Process template like real printer
+        const preparedData = prepareTemplateData(data);
+        let mockOutput = "=== MOCK PRINT OUTPUT ===\n";
+
+        if (template.segments && Array.isArray(template.segments)) {
+          let processedSegments = 0;
+          
+          for (const segment of template.segments) {
+            if (!segment.content || segment.content.trim() === '') continue;
+            
+            const processedContent = renderTemplateString(segment.content, preparedData);
+            if (processedContent && processedContent.trim() !== '') {
+              mockOutput += processedContent + '\n';
+              processedSegments++;
+            }
+          }
+          
+          if (processedSegments === 0) {
+            throw printerUtils.createError(
+              printerUtils.ErrorTypes.TEMPLATE,
+              'Mock printer: No content to print',
+              'Mock printer: Chop qilinadigan mazmun yo\'q'
+            );
+          }
+        } else {
+          const text = renderTemplate(template.content || template, preparedData);
+          mockOutput += text + '\n';
+        }
+
+        mockOutput += "=== END MOCK PRINT ===\n";
+        console.log("Mock printer output:\n" + mockOutput);
+
+        return {
+          success: true,
+          mockOutput,
+          message: 'Mock print completed successfully'
+        };
+
+      } catch (error) {
+        console.error("Mock printer error:", error);
+        throw error;
+      }
+    },
+
+    async mockTestConnection(ip) {
+      console.log(`=== MOCK PRINTER: Testing connection to ${ip} ===`);
+      
+      // Simulate network delay
+      await new Promise(resolve => setTimeout(resolve, 500 + Math.random() * 1000));
+      
+      // Simulate occasional connection failures for testing
+      if (Math.random() < 0.1) {
+        throw printerUtils.createError(
+          printerUtils.ErrorTypes.CONNECTION,
+          'Mock connection failed (random test)',
+          'Mock ulanish testi muvaffaqiyatsiz'
+        );
+      }
+      
+      console.log("Mock printer connection test successful");
+      return true;
+    }
+  };
+}
+
+const mockPrinter = createMockPrinter();
+
+/**
  * Создает тестовые данные для демонстрации шаблона чека
  * @returns {Object} - Тестовые данные для шаблона
  */
+function getTestTemplateData() {
+  return {
+    id: "TEST-123",
+    index: "A001234",
+    products: [
+      {
+        product: {
+          name: "Renvol Atef 4L VI",
+        },
+        quantity: 12,
+        price: 21,
+        currency: "USD",
+      },
+      {
+        product: {
+          name: "Sintol 0.5L",
+        },
+        quantity: 1,
+        price: 15000,
+        currency: "UZS",
+      },
+    ],
+    branch: {
+      name: "UMA-OIL LOLA",
+    },
+    client: {
+      fullName: "Ulug'bek Mirdadayev",
+      phone: "+998 99 657 2600",
+    },
+    totalAmount: {
+      uzs: 77000,
+      usd: 6.5,
+    },
+    paidAmount: {
+      uzs: 50000,
+      usd: 6.5,
+    },
+    debtAmount: {
+      uzs: 27000,
+      usd: 0,
+    },
+    notes: "Mijoz kechqurun 19:00 da qarzni to'laydi",
+    date_returned: new Date(Date.now() + 86400000).toISOString(),
+    paymentType: "cash",
+    status: "completed",
+    createdAt: new Date().toISOString(),
+  };
+}
 function getTestTemplateData() {
   return {
     id: "TEST-123",
@@ -1009,10 +1357,12 @@ function getTestTemplateData() {
 module.exports = {
   printReceipt,
   testPrint,
+  testPrintWithMock,
   testTemplateProcessing,
   testConnection,
   previewTemplate,
   getTestTemplateData,
   renderTemplate,
-  renderTemplateString
+  renderTemplateString,
+  createMockPrinter
 };

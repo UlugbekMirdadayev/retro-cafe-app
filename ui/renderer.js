@@ -103,34 +103,57 @@ savePrinterSettingsBtn.addEventListener('click', async () => {
 async function connectPrinterHandler() {
   // Предотвращаем многократные клики
   if (connectPrinterBtn.disabled) return;
+  
+  const originalText = connectPrinterBtn.textContent;
   connectPrinterBtn.disabled = true;
+  connectPrinterBtn.textContent = 'Ulanmoqda...';
   
   const ip = printerIpInput.value.trim();
   if (!ip) {
-    showToast(window.i18n.t('toasts.enter_printer_ip'), 'error');
+    showToast('Printer IP manzilini kiriting', 'error');
     connectPrinterBtn.disabled = false;
+    connectPrinterBtn.textContent = originalText;
     return;
   }
   
-  showToast(window.i18n.t('toasts.connecting_to_printer'), 'info');
+  // Validate IP format before attempting connection
+  const ipRegex = /^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/;
+  if (!ipRegex.test(ip)) {
+    showToast('IP manzil formati noto\'g\'ri (masalan: 192.168.1.100)', 'error');
+    connectPrinterBtn.disabled = false;
+    connectPrinterBtn.textContent = originalText;
+    return;
+  }
+  
+  showToast(`Printer ${ip}:9100 ga ulanmoqda...`, 'info');
   showPrinterStatus('connecting');
   
   try {
     console.log('Отправка запроса на подключение к принтеру:', ip);
     const result = await window.api.connectPrinter(ip);
+    
     if (result.success) {
-      // Не показываем toast здесь, он будет показан при событии изменения статуса
+      showToast('Printer muvaffaqiyatli ulandi! ✓', 'success');
       showPrinterStatus('connected');
     } else {
-      showToast(window.i18n.t('toasts.printer_connection_error') + result.error, 'error');
+      // Show user-friendly error message
+      const errorMsg = result?.userMessage || 'Printerga ulanishda xatolik';
+      showToast(errorMsg, 'error');
       showPrinterStatus('error');
+      
+      // Log technical details for debugging
+      if (result.error) {
+        console.error('Printer connection error details:', result.error);
+      }
     }
   } catch (e) {
-    showToast(window.i18n.t('toasts.printer_connection_error'), 'error');
+    console.error('Printer connection exception:', e);
+    showToast('Printer bilan bog\'lanishda kutilmagan xatolik yuz berdi', 'error');
     showPrinterStatus('error');
   } finally {
-    // Разблокируем кнопку после завершения запроса
+    // Restore button state
     connectPrinterBtn.disabled = false;
+    connectPrinterBtn.textContent = originalText;
   }
 }
 
@@ -138,36 +161,93 @@ async function connectPrinterHandler() {
 connectPrinterBtn.addEventListener('click', connectPrinterHandler);
 
 testPrintBtn.addEventListener('click', async () => {
+  // Prevent multiple concurrent test prints
+  if (testPrintBtn.disabled) return;
+  
+  testPrintBtn.disabled = true;
+  const originalText = testPrintBtn.textContent;
+  
   try {
-    showToast('Принтерга уланмоқда...', 'info');
+    // Show better loading state
+    testPrintBtn.textContent = 'Test chop etilmoqda...';
+    showToast('Printerni tekshirmoqda va test chop etmoqda...', 'info');
+    
     const result = await window.api.testPrint();
     
     if (result && result.success) {
-      showToast('Тест чеки муваффақиятли чоп этилди!', 'success');
+      showToast('Test cheki muvaffaqiyatli chop etildi! ✓', 'success');
+      // Optionally show stats if available
+      if (result.stats) {
+        console.log('Print stats:', result.stats);
+      }
     } else {
-      showToast(result?.error || 'Чоп этишда хато', 'error');
+      // Show user-friendly error message
+      const errorMsg = result?.userMessage || result?.error || 'Chop etishda xatolik yuz berdi';
+      showToast(errorMsg, 'error');
+      
+      // Log technical details for debugging
+      if (result?.error) {
+        console.error('Test print error details:', result.error);
+      }
     }
   } catch (error) {
     console.error('Test print error:', error);
-    showToast('Принтерга уланишда хато', 'error');
+    
+    // Show generic user-friendly error
+    showToast('Printerni tekshirishda xatolik yuz berdi', 'error');
+  } finally {
+    // Restore button state
+    testPrintBtn.disabled = false;
+    testPrintBtn.textContent = originalText;
   }
 });
 
 // Test template without printing
 testTemplateBtn?.addEventListener('click', async () => {
+  // Prevent multiple concurrent tests
+  if (testTemplateBtn.disabled) return;
+  
+  testTemplateBtn.disabled = true;
+  const originalText = testTemplateBtn.textContent;
+  
   try {
-    showToast('Шаблонни текширмоқда...', 'info');
+    // Show better loading state
+    testTemplateBtn.textContent = 'Shablon tekshirilmoqda...';
+    showToast('Shablon tuzilishi va ma\'lumotlari tekshirilmoqda...', 'info');
+    
     const result = await window.api.testTemplate();
     
     if (result && result.success) {
-      showToast('Шаблон муваффақиятли ишлади!', 'success');
+      showToast('Shablon muvaffaqiyatli ishladi! ✓', 'success');
+      
+      // Show additional stats if available
+      if (result.stats) {
+        const stats = result.stats;
+        const statsMsg = `Jami ${stats.totalSegments} segment, ${stats.processedSegments} ta mazmun bilan, ${stats.skippedConditionalSegments} ta shartli`;
+        console.log('Template processing stats:', statsMsg);
+        
+        // Show detailed success message with stats
+        setTimeout(() => {
+          showToast(statsMsg, 'info');
+        }, 2000);
+      }
     } else {
-      showToast(result?.message || result?.error || 'Шаблон хатоси', 'error');
-      console.error('Template test error:', result);
+      // Show user-friendly error message
+      const errorMsg = result?.userMessage || result?.message || result?.error || 'Shablon ishlov berishda xatolik';
+      showToast(errorMsg, 'error');
+      
+      // Log technical details for debugging
+      if (result?.error) {
+        console.error('Template test error details:', result);
+      }
     }
   } catch (error) {
     console.error('Template test error:', error);
-    showToast('Шаблонни текшириш хатоси', 'error');
+    showToast('Shablonni tekshirishda xatolik yuz berdi', 'error');
+  } finally {
+    // Restore button state
+    testTemplateBtn.disabled = false;
+    testTemplateBtn.textContent = originalText;
   }
 });
 

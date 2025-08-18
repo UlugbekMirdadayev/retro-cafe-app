@@ -1,2 +1,8 @@
 /node_modules
 /dist
+
+# Debug and log files
+logs/
+*.log
+debug-report*.json
+template-validation*.json
