@@ -493,29 +493,77 @@ ipcMain.handle("get-logs", () => logManager.getLogs());
 ipcMain.handle("clear-logs", () => logManager.clearLogs());
 ipcMain.handle("test-print", async () => {
   try {
+    console.log('Starting test print from main process...');
     const result = await printer.testPrint();
-    return { success: true, result };
+    
+    logManager.addLog('test_print', 'success', 'success', 'Test print completed successfully');
+    
+    return { 
+      success: true, 
+      message: 'Test print completed successfully',
+      userMessage: 'Test chop muvaffaqiyatli bajarildi',
+      result 
+    };
   } catch (error) {
     console.error('Test print error:', error);
+    
+    logManager.addLog('test_print', 'error', 'error', error.message || 'Test print failed');
+    
+    // Handle structured errors from printer utils
+    if (error.type) {
+      return { 
+        success: false, 
+        error: error.message,
+        userMessage: error.userMessage,
+        type: error.type
+      };
+    }
+    
+    // Handle legacy errors
     return { 
       success: false, 
-      error: error.message || 'Принтер уланиши хатоси'
+      error: error.message || 'Unknown test print error',
+      userMessage: 'Test chop etishda xatolik yuz berdi'
     };
   }
 });
 
 ipcMain.handle("test-template", async () => {
   try {
-    console.log('Starting template test...');
+    console.log('Starting template test from main process...');
     const result = printer.testTemplateProcessing();
     console.log('Template test result:', JSON.stringify(result, null, 2));
+    
+    if (result.success) {
+      logManager.addLog('template_test', 'success', 'success', 'Template validation successful');
+    } else {
+      logManager.addLog('template_test', 'warning', 'warning', result.message || 'Template validation failed');
+    }
+    
     return result;
   } catch (error) {
     console.error('Template test error:', error);
     console.error('Error stack:', error.stack);
+    
+    logManager.addLog('template_test', 'error', 'error', error.message || 'Template test failed');
+    
+    // Handle structured errors from printer utils
+    if (error.type) {
+      return { 
+        success: false, 
+        message: error.message,
+        userMessage: error.userMessage,
+        type: error.type,
+        error: error
+      };
+    }
+    
+    // Handle legacy errors
     return { 
       success: false, 
-      error: error.message || 'Template processing error'
+      message: error.message || 'Unknown template processing error',
+      userMessage: 'Shablon tekshirishda xatolik yuz berdi',
+      error: error.message
     };
   }
 });
@@ -560,7 +608,7 @@ ipcMain.handle("connect-printer", async (_, ip) => {
   console.log("IP received:", ip);
 
   try {
-    // Обновляем статус на "connecting"
+    // Send connecting status
     console.log("Sending connecting status...");
     if (
       mainWindow &&
@@ -574,18 +622,19 @@ ipcMain.handle("connect-printer", async (_, ip) => {
       console.log("Connecting status sent");
     }
 
-    // Проверяем соединение с принтером
+    // Test printer connection with improved error handling
     console.log("Testing printer connection...");
     const testResult = await printer.testConnection(ip);
     console.log("Printer test result:", testResult);
 
-    // Если все хорошо, обновляем настройки и статус
+    // Save settings if connection successful
     settings.saveSettings({
       ...settings.getSettings(),
       printerIp: ip,
     });
     console.log("Printer IP saved to settings");
 
+    // Send connected status
     console.log("Sending connected status...");
     if (
       mainWindow &&
@@ -599,25 +648,54 @@ ipcMain.handle("connect-printer", async (_, ip) => {
       console.log("Connected status sent");
     }
 
+    logManager.addLog('printer_connection', 'success', 'success', `Connected to printer at ${ip}`);
+    
     console.log("=== PRINTER CONNECTION SUCCESS ===");
-    return { success: true };
+    return { 
+      success: true,
+      message: 'Printer connection successful',
+      userMessage: 'Printer muvaffaqiyatli ulandi'
+    };
+    
   } catch (error) {
     console.error("=== PRINTER CONNECTION ERROR ===");
     console.error("Error connecting to printer:", error);
+    
+    // Send error status
     if (
       mainWindow &&
       mainWindow.webContents &&
       !mainWindow.webContents.isDestroyed()
     ) {
+      const errorDetails = error.userMessage || error.message || 'Connection failed';
       mainWindow.webContents.send("printer-status-update", {
         status: "error",
-        details: error.message,
+        details: errorDetails,
         timestamp: Date.now(),
       });
       console.log("Error status sent");
     }
+
+    logManager.addLog('printer_connection', 'error', 'error', error.message || 'Connection failed');
+    
     console.log("=== PRINTER CONNECTION FAILED ===");
-    return { success: false, error: error.message };
+    
+    // Handle structured errors from printer utils
+    if (error.type) {
+      return { 
+        success: false, 
+        error: error.message,
+        userMessage: error.userMessage,
+        type: error.type
+      };
+    }
+    
+    // Handle legacy errors
+    return { 
+      success: false, 
+      error: error.message || 'Unknown connection error',
+      userMessage: 'Printerga ulanishda xatolik yuz berdi'
+    };
   }
 });
 ipcMain.handle("connect-socket", (_, url) => {
