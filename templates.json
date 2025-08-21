@@ -6,8 +6,8 @@
         "content": "UMA-OIL Lola",
         "settings": {
           "align": "center",
-          "font": "b",
-          "size": 2,
+          "font": "a",
+          "size": 0,
           "bold": true,
           "underline": false,
           "italic": false
@@ -28,8 +28,8 @@
         "content": "NAKLADNOY",
         "settings": {
           "align": "center",
-          "font": "b",
-          "size": 1,
+          "font": "a",
+          "size": 0,
           "bold": true,
           "underline": true,
           "italic": false
@@ -94,8 +94,8 @@
         "content": "MAHSULOTLAR:",
         "settings": {
           "align": "center",
-          "font": "b",
-          "size": 1,
+          "font": "a",
+          "size": 0,
           "bold": true,
           "underline": false,
           "italic": false
@@ -127,8 +127,8 @@
         "content": "JAMI TO'LOV:",
         "settings": {
           "align": "center",
-          "font": "b",
-          "size": 1,
+          "font": "a",
+          "size": 0,
           "bold": true,
           "underline": false,
           "italic": false
@@ -149,8 +149,8 @@
         "content": "UZS: {totalAmountUzs} so'm",
         "settings": {
           "align": "left",
-          "font": "b",
-          "size": 1,
+          "font": "a",
+          "size": 0,
           "bold": true,
           "underline": false,
           "italic": false
@@ -160,8 +160,8 @@
         "content": "USD: {totalAmountUsd} $",
         "settings": {
           "align": "left",
-          "font": "b",
-          "size": 1,
+          "font": "a",
+          "size": 0,
           "bold": true,
           "underline": false,
           "italic": false

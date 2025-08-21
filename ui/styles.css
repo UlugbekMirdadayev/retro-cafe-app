@@ -528,6 +528,9 @@ body {
   line-height: 1.3;
   color: #000;
   min-height: 160px;
+  border: 1px solid #e0e0e0;
+  border-radius: 4px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
 }
 
 .receipt-preview-container pre {
@@ -541,6 +544,94 @@ body {
   border: none;
   white-space: pre-wrap;
   word-wrap: break-word;
+}
+
+/* Улучшенные стили для предварительного просмотра с поддержкой форматирования */
+.receipt-preview-container pre .bold-text {
+  font-weight: bold;
+  color: #000;
+}
+
+.receipt-preview-container pre .underlined-text {
+  text-decoration: underline;
+  text-decoration-color: #333;
+}
+
+.receipt-preview-container pre .italic-text {
+  font-style: italic;
+  color: #333;
+}
+
+.receipt-preview-container pre .large-text {
+  font-size: 14px;
+  letter-spacing: 1px;
+  font-weight: 500;
+}
+
+.receipt-preview-container pre .huge-text {
+  font-size: 16px;
+  letter-spacing: 2px;
+  line-height: 1.5;
+  font-weight: 600;
+}
+
+.receipt-preview-container pre .font-b {
+  font-family: "Consolas", "Monaco", monospace;
+  font-size: 10px;
+  letter-spacing: 0.5px;
+}
+
+.receipt-preview-container pre .font-a {
+  font-family: "Courier New", monospace;
+  font-size: 11px;
+}
+
+/* Стили для разных размеров текста */
+.receipt-preview-container pre .size-0 {
+  font-size: 11px;
+  letter-spacing: normal;
+}
+
+.receipt-preview-container pre .size-1 {
+  font-size: 13px;
+  letter-spacing: 1px;
+  font-weight: 500;
+}
+
+.receipt-preview-container pre .size-2 {
+  font-size: 15px;
+  letter-spacing: 2px;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+/* Анимированная визуализация разных шрифтов и размеров */
+.receipt-preview-container::before {
+  content: "PREVIEW";
+  position: absolute;
+  top: 2px;
+  right: 4px;
+  font-size: 8px;
+  color: #999;
+  font-weight: normal;
+  opacity: 0.5;
+}
+
+/* Стили для отображения результатов разного форматирования */
+.format-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background-color: var(--bg-info);
+  border: 1px solid var(--border-info);
+  border-radius: var(--border-radius);
+  color: var(--text-info);
+  font-size: 14px;
+}
+
+.format-info .material-icons {
+  font-size: 18px;
 }
 /* Сетка настроек шаблона */
 .template-settings-panel {

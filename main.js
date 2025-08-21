@@ -13,8 +13,8 @@ function createWindow() {
   mainWindow = new BrowserWindow({
     width: 900,
     height: 700,
-    // frame: false, // Делаем окно безрамочным для собственного заголовка
-    autoHideMenuBar: false,
+    frame: false, // Делаем окно безрамочным для собственного заголовка
+    autoHideMenuBar: true,
     icon: path.join(__dirname, "ui/assets/favicon.png"), // Добавляем иконку приложения
     webPreferences: {
       preload: path.join(__dirname, "preload.js"),
@@ -496,26 +496,10 @@ ipcMain.handle("test-print", async () => {
     const result = await printer.testPrint();
     return { success: true, result };
   } catch (error) {
-    console.error('Test print error:', error);
-    return { 
-      success: false, 
-      error: error.message || 'Принтер уланиши хатоси'
-    };
-  }
-});
-
-ipcMain.handle("test-template", async () => {
-  try {
-    console.log('Starting template test...');
-    const result = printer.testTemplateProcessing();
-    console.log('Template test result:', JSON.stringify(result, null, 2));
-    return result;
-  } catch (error) {
-    console.error('Template test error:', error);
-    console.error('Error stack:', error.stack);
-    return { 
-      success: false, 
-      error: error.message || 'Template processing error'
+    console.error("Test print error:", error);
+    return {
+      success: false,
+      error: error.message || "Принтер уланиши хатоси",
     };
   }
 });
@@ -690,9 +674,9 @@ ipcMain.handle("connect-socket", (_, url) => {
 ipcMain.handle("log-event", async (_, eventData) => {
   try {
     logManager.addLog(
-      eventData.type || 'socket_message',
-      eventData.event || 'unknown',
-      'info',
+      eventData.type || "socket_message",
+      eventData.event || "unknown",
+      "info",
       JSON.stringify(eventData.data || {})
     );
     return { success: true };
@@ -708,17 +692,17 @@ ipcMain.handle("process-template", async (_, templateId, data) => {
     if (!template) {
       throw new Error(`Template "${templateId}" not found`);
     }
-    
+
     // Process the template with the provided data
     await printer.printReceipt(template, data);
-    
+
     // Log the successful processing
-    logManager.addLog('template_processed', template.name, 'success');
-    
+    logManager.addLog("template_processed", template.name, "success");
+
     return { success: true };
   } catch (error) {
     console.error("Error processing template:", error);
-    logManager.addLog('template_error', templateId, 'error', error.message);
+    logManager.addLog("template_error", templateId, "error", error.message);
     return { success: false, error: error.message };
   }
 });

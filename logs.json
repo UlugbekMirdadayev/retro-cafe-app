@@ -118,5 +118,60 @@
     "eventType": "new_order",
     "templateName": "Nakladnoy cheki",
     "status": "success"
+  },
+  {
+    "time": "2025-08-18T07:13:56.886Z",
+    "eventType": "new_order",
+    "templateName": "Nakladnoy cheki",
+    "status": "success"
+  },
+  {
+    "time": "2025-08-18T07:13:56.925Z",
+    "eventType": "new_order",
+    "templateName": "Nakladnoy cheki",
+    "status": "success"
+  },
+  {
+    "time": "2025-08-18T07:49:14.602Z",
+    "eventType": "new_order",
+    "templateName": "Nakladnoy cheki",
+    "status": "success"
+  },
+  {
+    "time": "2025-08-18T08:26:42.191Z",
+    "eventType": "new_order",
+    "templateName": "Nakladnoy cheki",
+    "status": "success"
+  },
+  {
+    "time": "2025-08-18T08:26:42.207Z",
+    "eventType": "new_order",
+    "templateName": "Nakladnoy cheki",
+    "status": "success"
+  },
+  {
+    "time": "2025-08-20T15:46:16.081Z",
+    "eventType": "socket_message",
+    "templateName": "new_order",
+    "status": "info",
+    "data": "[{\"id\":\"68a5edc6a27aa20fe54fcb37\",\"client\":null,\"branch\":{\"_id\":\"6877dd28939ecd40fa5fc930\",\"name\":\"Lola\",\"address\":\"Lola\",\"isActive\":true,\"isDeleted\":false,\"deletedAt\":null,\"createdAt\":\"2025-07-16T17:11:04.769Z\",\"updatedAt\":\"2025-07-17T09:53:08.983Z\"},\"products\":[{\"product\":{\"_id\":\"68997e64fa695183605a2541\",\"name\":\"FANFARO 10W-40 4L\",\"costPrice\":175000,\"salePrice\":185000,\"quantity\":37,\"minQuantity\":1,\"images\":[],\"unit\":\"dona\",\"currency\":\"UZS\",\"createdBy\":\"6872eb8a5fb1a549198b4655\",\"batch_number\":\"\",\"vipPrice\":185000,\"discount\":{\"price\":0,\"children\":[]},\"description\":\"FANFARO 10W-40 4L\",\"branch\":\"6888ece4c7df5aa9cb6924a0\",\"isAvailable\":true,\"isDeleted\":false,\"deletedAt\":null,\"createdAt\":\"2025-08-11T05:23:48.543Z\",\"updatedAt\":\"2025-08-20T15:46:14.015Z\",\"km\":5000},\"quantity\":1,\"price\":185000,\"costPrice\":175000,\"profit\":10000,\"_id\":\"68a5edc6a27aa20fe54fcb38\"}],\"totalAmount\":{\"usd\":0,\"uzs\":185000},\"paidAmount\":{\"usd\":0,\"uzs\":185000},\"debtAmount\":{\"usd\":0,\"uzs\":0},\"paymentType\":\"cash\",\"status\":\"completed\",\"profitAmount\":{\"usd\":0,\"uzs\":10000},\"createdAt\":\"2025-08-20T15:46:14.230Z\",\"notes\":\"\",\"car\":null,\"index\":0}]"
+  },
+  {
+    "time": "2025-08-20T15:46:16.375Z",
+    "eventType": "new_order",
+    "templateName": "Nakladnoy cheki",
+    "status": "success"
+  },
+  {
+    "time": "2025-08-20T15:46:16.445Z",
+    "eventType": "new_order",
+    "templateName": "Nakladnoy cheki",
+    "status": "success"
+  },
+  {
+    "time": "2025-08-20T15:46:30.572Z",
+    "eventType": "new_order",
+    "templateName": "Nakladnoy cheki",
+    "status": "success"
   }
 ]

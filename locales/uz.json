@@ -106,6 +106,7 @@
     "template_deleted": "Andoza o'chirildi",
     "no_html_template": "Chop etish uchun HTML andoza mavjud emas",
     "receipt_printed": "Chek chop etildi",
+    "no_template_content": "Chop etish uchun andoza mazmuni mavjud emas",
     "printing": "Chop qilinmoqda...",
     "print_error": "Chop etish xatosi: ",
     "logs_cleared": "Jurnal tozalandi",

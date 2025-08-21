@@ -104,6 +104,7 @@
     "template_saved": "Template saved",
     "template_deleted": "Template deleted",
     "no_html_template": "No HTML template for printing",
+    "no_template_content": "No template content available",
     "receipt_printed": "Receipt printed",
     "printing": "Printing...",
     "print_error": "Print error: ",

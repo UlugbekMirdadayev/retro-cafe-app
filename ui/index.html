@@ -135,13 +135,6 @@
                   >
                     <span class="material-icons">print</span> Тест печати
                   </button>
-                  <button
-                    id="test-template"
-                    class="btn btn-secondary"
-                    title="Тест шаблона без печати"
-                  >
-                    <span class="material-icons">description</span> Тест шаблона
-                  </button>
                 </div>
 
                 <div class="status-display mt-md">
@@ -237,7 +230,11 @@
                   <button id="connect-socket-btn" class="btn btn-success">
                     <span class="material-icons">link</span> Connect
                   </button>
-                  <button id="disconnect-socket-btn" class="btn btn-danger" disabled>
+                  <button
+                    id="disconnect-socket-btn"
+                    class="btn btn-danger"
+                    disabled
+                  >
                     <span class="material-icons">link_off</span> Disconnect
                   </button>
                 </div>
@@ -245,7 +242,10 @@
                 <!-- Connection Status -->
                 <div class="status-display mt-md">
                   <div class="status-label">Connection Status:</div>
-                  <div id="socket-connection-status" class="status status-disconnected">
+                  <div
+                    id="socket-connection-status"
+                    class="status status-disconnected"
+                  >
                     <span class="status-dot status-dot-disconnected"></span>
                     <span>Disconnected</span>
                   </div>
@@ -270,7 +270,8 @@
                     </select>
                   </div>
                   <button id="bind-template" class="btn btn-primary">
-                    <span class="material-icons">link</span> Bind Template to Event
+                    <span class="material-icons">link</span> Bind Template to
+                    Event
                   </button>
 
                   <!-- Current Bindings -->
@@ -295,7 +296,8 @@
                     <span class="material-icons">clear</span> Clear Messages
                   </button>
                   <button id="auto-scroll-toggle" class="btn btn-secondary">
-                    <span class="material-icons">vertical_align_bottom</span> Auto Scroll: ON
+                    <span class="material-icons">vertical_align_bottom</span>
+                    Auto Scroll: ON
                   </button>
                 </div>
               </div>
@@ -318,7 +320,8 @@
                       <span class="message-event">Info</span>
                     </div>
                     <div class="message-content">
-                      Socket connection manager initialized. Connect to a server to see messages.
+                      Socket connection manager initialized. Connect to a server
+                      to see messages.
                     </div>
                   </div>
                 </div>
@@ -358,9 +361,8 @@
                         name="template-format"
                         value="legacy"
                         class="form-check-input"
-                        checked
+                        style="display: none"
                       >
-                      <span>Старый формат (текст)</span>
                     </label>
                     <label class="form-check">
                       <input
@@ -368,9 +370,16 @@
                         name="template-format"
                         value="segments"
                         class="form-check-input"
+                        checked
+                        style="display: none"
                       >
-                      <span>Новый формат (сегменты)</span>
                     </label>
+                    <div class="format-info">
+                      <span class="material-icons">info</span>
+                      <span
+                        >Используется формат сегментов для всех шаблонов</span
+                      >
+                    </div>
                   </div>
 
                   <div class="form-group">
@@ -386,8 +395,12 @@
                     >
                   </div>
 
-                  <!-- Старый формат - textarea -->
-                  <div id="legacy-editor" class="form-group">
+                  <!-- Старый формат - textarea (скрыт) -->
+                  <div
+                    id="legacy-editor"
+                    class="form-group"
+                    style="display: none"
+                  >
                     <label for="template-content" data-i18n="templates.content"
                       >Содержимое шаблона</label
                     >
@@ -399,12 +412,8 @@
                     ></textarea>
                   </div>
 
-                  <!-- Новый формат - редактор сегментов -->
-                  <div
-                    id="segments-editor"
-                    class="form-group"
-                    style="display: none"
-                  >
+                  <!-- Новый формат - редактор сегментов (показан по умолчанию) -->
+                  <div id="segments-editor" class="form-group">
                     <label>Сегменты шаблона</label>
                     <div id="segments-list" class="segments-list">
                       <!-- Сегменты будут добавлены через JS -->
@@ -426,127 +435,7 @@
                       id="template-preview"
                       class="template-preview-box"
                     ></div>
-                    <button id="print-preview" class="btn btn-primary mt-sm">
-                      <span class="material-icons">print</span>
-                      <span data-i18n="templates.print_preview"
-                        >Печать превью</span
-                      >
-                    </button>
                   </div>
-
-                  <div class="template-settings-panel">
-                    <h4 data-i18n="templates.settings">Настройки шаблона</h4>
-
-                    <div class="template-settings-grid">
-                      <div class="form-group">
-                        <label for="template-align" data-i18n="templates.align"
-                          >Выравнивание</label
-                        >
-                        <select id="template-align" class="form-control">
-                          <option value="left" data-i18n="templates.align_left">
-                            Слева
-                          </option>
-                          <option
-                            value="center"
-                            data-i18n="templates.align_center"
-                          >
-                            По центру
-                          </option>
-                          <option
-                            value="right"
-                            data-i18n="templates.align_right"
-                          >
-                            Справа
-                          </option>
-                        </select>
-                      </div>
-
-                      <div class="form-group">
-                        <label for="template-font" data-i18n="templates.font"
-                          >Шрифт</label
-                        >
-                        <select id="template-font" class="form-control">
-                          <option value="a" data-i18n="templates.font_a">
-                            Шрифт А
-                          </option>
-                          <option value="b" data-i18n="templates.font_b">
-                            Шрифт B
-                          </option>
-                        </select>
-                      </div>
-
-                      <div class="form-group">
-                        <label for="template-size" data-i18n="templates.size"
-                          >Размер</label
-                        >
-                        <select id="template-size" class="form-control">
-                          <option
-                            value="normal"
-                            data-i18n="templates.size_normal"
-                          >
-                            Обычный
-                          </option>
-                          <option
-                            value="doubleWidth"
-                            data-i18n="templates.size_double_width"
-                          >
-                            Двойная ширина
-                          </option>
-                          <option
-                            value="doubleHeight"
-                            data-i18n="templates.size_double_height"
-                          >
-                            Двойная высота
-                          </option>
-                          <option
-                            value="double"
-                            data-i18n="templates.size_double"
-                          >
-                            Двойной
-                          </option>
-                        </select>
-                      </div>
-
-                      <div class="form-group checkbox-group">
-                        <label class="form-check">
-                          <input
-                            type="checkbox"
-                            id="template-bold"
-                            class="form-check-input"
-                          >
-                          <span data-i18n="templates.bold">Жирный</span>
-                        </label>
-                      </div>
-
-                      <div class="form-group checkbox-group">
-                        <label class="form-check">
-                          <input
-                            type="checkbox"
-                            id="template-underline"
-                            class="form-check-input"
-                          >
-                          <span data-i18n="templates.underline"
-                            >Подчёркнутый</span
-                          >
-                        </label>
-                      </div>
-
-                      <div class="form-group checkbox-group">
-                        <label class="form-check">
-                          <input
-                            type="checkbox"
-                            id="template-paper-cut"
-                            class="form-check-input"
-                            checked
-                          >
-                          <span data-i18n="templates.paper_cut"
-                            >Отрезать чек</span
-                          >
-                        </label>
-                      </div>
-                    </div>
-                  </div>
-
                   <div class="form-group">
                     <label
                       for="set-as-default"

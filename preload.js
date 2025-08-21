@@ -7,6 +7,7 @@ contextBridge.exposeInMainWorld("api", {
     maximize: () => ipcRenderer.invoke("window-maximize"),
     close: () => ipcRenderer.invoke("window-close"),
   },
+  
   // Функции локализации
   localization: {
     translate: (key) => ipcRenderer.invoke("translate", key),
@@ -19,7 +20,6 @@ contextBridge.exposeInMainWorld("api", {
   getLogs: () => ipcRenderer.invoke("get-logs"),
   clearLogs: () => ipcRenderer.invoke("clear-logs"),
   testPrint: () => ipcRenderer.invoke("test-print"),
-  testTemplate: () => ipcRenderer.invoke("test-template"),
   getTemplates: () => ipcRenderer.invoke("get-templates"),
   saveTemplates: (templates) => ipcRenderer.invoke("save-templates", templates),
   saveTemplate: (type, template) => ipcRenderer.invoke("save-template", { type, template }),

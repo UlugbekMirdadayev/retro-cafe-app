@@ -1,12 +1,6 @@
 const escpos = require("escpos");
 escpos.Network = require("escpos-network");
 const settings = require("./settings");
-
-function getPrinterDevice() {
-  const ip = settings.getSettings().printerIp;
-  return new escpos.Network(ip, 9100);
-}
-
 /**
  * Печать текстового шаблона чека с применением настроек форматирования
  * @param {string|Object} template - Содержимое текстового шаблона или объект с сегментами
@@ -74,16 +68,22 @@ function printReceipt(template, data, templateSettings = {}) {
           // Проверяем новый или старый формат шаблона
           if (template.segments && Array.isArray(template.segments)) {
             // Новый формат с сегментами
-            console.log("Processing template with segments:", template.segments.length);
+            console.log(
+              "Processing template with segments:",
+              template.segments.length
+            );
             printTemplateSegments(printer, template, preparedData);
           } else {
             // Старый формат для обратной совместимости
             console.log("Processing legacy template format");
             // Применяем настройки шаблона
             applyTemplateSettings(printer, templateSettings);
-            
+
             // Обрабатываем шаблон
-            const text = renderTemplate(template.content || template, preparedData);
+            const text = renderTemplate(
+              template.content || template,
+              preparedData
+            );
             printer.text(text);
           }
 
@@ -94,7 +94,10 @@ function printReceipt(template, data, templateSettings = {}) {
           const globalSettings = template.globalSettings || templateSettings;
           if (globalSettings.beep && globalSettings.beep.enabled) {
             const count = parseInt(globalSettings.beep.count) || 1;
-            const time = parseInt(globalSettings.beep.duration || globalSettings.beep.time) || 100;
+            const time =
+              parseInt(
+                globalSettings.beep.duration || globalSettings.beep.time
+              ) || 100;
             printer.beep(count, time);
           } else {
             // Без звукового сигнала
@@ -132,7 +135,7 @@ function printReceipt(template, data, templateSettings = {}) {
 function printTemplateSegments(printer, template, data) {
   console.log("Starting segment-based printing");
   console.log(`Template has ${template.segments.length} segments`);
-  
+
   if (!template.segments || !Array.isArray(template.segments)) {
     console.error("Template has no segments or invalid segments format");
     throw new Error("Шаблон не содержит сегментов для печати");
@@ -142,13 +145,13 @@ function printTemplateSegments(printer, template, data) {
   let processedSegments = 0;
   let totalSegments = template.segments.length;
   let skippedConditionalSegments = 0;
-  
+
   template.segments.forEach((segment, index) => {
     try {
       console.log(`\n--- Processing segment ${index + 1}/${totalSegments} ---`);
-      
+
       // Пропускаем пустые сегменты
-      if (!segment.content || segment.content.trim() === '') {
+      if (!segment.content || segment.content.trim() === "") {
         console.log(`Skipping empty segment ${index}`);
         return;
       }
@@ -157,18 +160,24 @@ function printTemplateSegments(printer, template, data) {
 
       // Обрабатываем содержимое сегмента
       let processedContent = renderTemplateString(segment.content, data);
-      
+
       console.log(`Processed content: "${processedContent}"`);
-      
+
       // Если после обработки содержимое пустое, проверяем, есть ли условные блоки
-      if (!processedContent || processedContent.trim() === '') {
+      if (!processedContent || processedContent.trim() === "") {
         // Проверяем, содержит ли сегмент только условные блоки
-        const hasConditionals = segment.content.includes(':if}') && segment.content.includes(':endif}');
+        const hasConditionals =
+          segment.content.includes(":if}") &&
+          segment.content.includes(":endif}");
         if (hasConditionals) {
-          console.log(`Segment ${index} contains conditionals that evaluated to empty - this is OK`);
+          console.log(
+            `Segment ${index} contains conditionals that evaluated to empty - this is OK`
+          );
           skippedConditionalSegments++;
         } else {
-          console.log(`Segment ${index} - empty after processing (no conditionals)`);
+          console.log(
+            `Segment ${index} - empty after processing (no conditionals)`
+          );
         }
         return;
       }
@@ -178,37 +187,45 @@ function printTemplateSegments(printer, template, data) {
 
       // Применяем настройки сегмента
       if (segment.settings) {
-        console.log(`Applying settings for segment ${index}:`, segment.settings);
+        console.log(
+          `Applying settings for segment ${index}:`,
+          segment.settings
+        );
         applyTemplateSettings(printer, segment.settings);
       }
 
       // Печатаем содержимое сегмента
-      printer.text(processedContent + '\n');
+      printer.text(processedContent + "\n");
       console.log(`Segment ${index} printed successfully`);
-      
     } catch (segmentError) {
       console.error(`Error processing segment ${index}:`, segmentError);
       // Продолжаем печать следующих сегментов при ошибке
     }
   });
-  
-  console.log(`\nProcessed ${processedSegments} segments, skipped conditional: ${skippedConditionalSegments}, hasContent: ${hasContent}`);
-  
+
+  console.log(
+    `\nProcessed ${processedSegments} segments, skipped conditional: ${skippedConditionalSegments}, hasContent: ${hasContent}`
+  );
+
   // Если у нас есть хотя бы один сегмент с содержимым, считаем это успехом
   // Даже если другие сегменты пустые из-за условий
   if (!hasContent) {
-    // Дополнительная проверка: если большинство сегментов были условными и пустыми, 
+    // Дополнительная проверка: если большинство сегментов были условными и пустыми,
     // но у нас есть основные сегменты (заголовок, линии и т.д.), это нормально
     const nonConditionalSegments = totalSegments - skippedConditionalSegments;
     if (nonConditionalSegments > 0 && processedSegments === 0) {
-      console.error("Template produced no printable content - all non-conditional segments are empty");
+      console.error(
+        "Template produced no printable content - all non-conditional segments are empty"
+      );
       throw new Error("Шаблон не содержит текста после обработки");
     } else if (totalSegments === skippedConditionalSegments) {
-      console.warn("All segments are conditional and empty - template needs basic content");
+      console.warn(
+        "All segments are conditional and empty - template needs basic content"
+      );
       throw new Error("Все сегменты шаблона условные и пусты");
     }
   }
-  
+
   console.log("Finished processing all segments");
 }
 
@@ -280,32 +297,41 @@ function previewTemplate(template, data, templateSettings = {}) {
     if (template.segments && Array.isArray(template.segments)) {
       // Новый формат с сегментами
       console.log("Previewing template with segments");
-      
+
       template.segments.forEach((segment, index) => {
         // Пропускаем пустые сегменты
-        if (!segment.content || segment.content.trim() === '') {
+        if (!segment.content || segment.content.trim() === "") {
           return;
         }
 
         // Обрабатываем содержимое сегмента
-        let processedContent = renderTemplateString(segment.content, preparedData);
-        
+        let processedContent = renderTemplateString(
+          segment.content,
+          preparedData
+        );
+
         // Если после обработки содержимое пустое, пропускаем сегмент
-        if (!processedContent || processedContent.trim() === '') {
+        if (!processedContent || processedContent.trim() === "") {
           return;
         }
 
         // Применяем форматирование для превью
         if (segment.settings) {
-          processedContent = formatPreviewText(processedContent, segment.settings);
+          processedContent = formatPreviewText(
+            processedContent,
+            segment.settings
+          );
         }
 
-        result += processedContent + '\n';
+        result += processedContent + "\n";
       });
     } else {
       // Старый формат для обратной совместимости
       console.log("Previewing legacy template format");
-      let text = renderTemplateString(template.content || template, preparedData);
+      let text = renderTemplateString(
+        template.content || template,
+        preparedData
+      );
 
       // Если в настройках указано выравнивание, применяем его
       if (templateSettings.align === "center") {
@@ -318,12 +344,9 @@ function previewTemplate(template, data, templateSettings = {}) {
     }
 
     // Убираем лишние переносы строк в конце
-    result = result.replace(/\n+$/, '');
-    
-    // Добавляем эмуляцию отреза чека
-    result += "\n" + "═".repeat(48) + "\n";
-    result += " ".repeat(15) + "✂ ОТРЕЗАТЬ ЗДЕСЬ ✂";
+    result = result.replace(/\n+$/, "");
 
+    // Добавляем эмуляцию отреза чека
     return result;
   } catch (error) {
     console.error("Error in previewTemplate:", error);
@@ -338,44 +361,111 @@ function previewTemplate(template, data, templateSettings = {}) {
  * @returns {string} - Отформатированный текст
  */
 function formatPreviewText(text, settings) {
-  const receiptWidth = 48; // Ширина чековой ленты
-  let formattedText = text;
+  console.log("=== Formatting Preview Text ===");
+  console.log("Input text:", text);
+  console.log("Settings:", settings);
 
-  // Применяем выравнивание
-  if (settings.align === "center") {
-    formattedText = centerTextToWidth(formattedText, receiptWidth);
-  } else if (settings.align === "right") {
-    formattedText = rightAlignTextToWidth(formattedText, receiptWidth);
+  const receiptWidth = 96; // Ширина чековой ленты
+  let formattedText = text;
+  let actualWidth = receiptWidth; // Реальная ширина с учетом настроек
+
+  // Сначала применяем стили текста (размер и шрифт)
+
+  // Размер шрифта влияет на отображение и ширину
+  if (settings.size && settings.size > 0) {
+    console.log("Applying size:", settings.size);
+    if (settings.size === 1) {
+      // Средний размер - делаем текст шире, уменьшаем эффективную ширину
+      formattedText = formattedText.split("").join(" ");
+      actualWidth = Math.floor(receiptWidth / 1.5); // Уменьшаем ширину для центровки
+      console.log("Size 1 applied, actualWidth:", actualWidth);
+    } else if (settings.size === 2) {
+      // Большой размер - делаем текст еще шире
+      formattedText = formattedText.split("").join("  ");
+      actualWidth = Math.floor(receiptWidth / 2); // Значительно уменьшаем ширину
+      console.log("Size 2 applied, actualWidth:", actualWidth);
+
+      // Добавляем эффект высоты для больших букв
+      const lines = formattedText.split("\n");
+      formattedText = lines
+        .map((line) => {
+          if (line.trim()) {
+            const padding = " ".repeat(
+              Math.min(Math.floor(line.length / 3), actualWidth)
+            );
+            return line + "\n" + padding; // Добавляем высоту снизу
+          }
+          return line;
+        })
+        .join("\n");
+    }
   }
 
-  // Размер шрифта влияет на отображение
-  if (settings.size && settings.size > 0) {
-    if (settings.size === 1) {
-      // Средний размер - делаем текст шире
-      formattedText = formattedText.split('').join(' ');
-    } else if (settings.size === 2) {
-      // Большой размер - делаем текст еще шире и выше
-      formattedText = formattedText.split('').join('  ');
-      formattedText = formattedText + '\n' + ' '.repeat(formattedText.length/3); // Добавляем высоту
+  // Шрифт влияет на стиль отображения
+  if (settings.font === "b") {
+    console.log("Applying font B");
+    // Шрифт B - более компактный, показываем это через точки между символами
+    if (!settings.size || settings.size === 0) {
+      formattedText = formattedText.split("").join("·");
+      actualWidth = Math.floor(receiptWidth / 1.2);
     }
+    // Добавляем индикатор шрифта B
+    formattedText = formattedText;
+  } else if (settings.font === "a") {
+    console.log("Applying font A");
+    // Добавляем индикатор шрифта A для ясности
+    formattedText = formattedText;
   }
 
   // Жирный шрифт - обводим звездочками
   if (settings.bold) {
+    console.log("Applying bold");
     formattedText = `**${formattedText}**`;
   }
-  
-  // Подчеркивание - добавляем линию снизу
-  if (settings.underline) {
-    const lineLength = formattedText.replace(/\*\*/g, '').length;
-    formattedText = formattedText + '\n' + '‾'.repeat(Math.min(lineLength, receiptWidth));
-  }
-  
-  // Курсив - обводим слешами
+
+  // Курсив - обводим слешами (применяем до выравнивания)
   if (settings.italic) {
+    console.log("Applying italic");
     formattedText = `/${formattedText}/`;
   }
 
+  // Применяем выравнивание с учетом реальной ширины
+  if (settings.align === "center") {
+    console.log("Applying center alignment");
+    formattedText = centerTextToWidth(formattedText, actualWidth);
+  } else if (settings.align === "right") {
+    console.log("Applying right alignment");
+    formattedText = rightAlignTextToWidth(formattedText, actualWidth);
+  }
+
+  // Подчеркивание - добавляем линию снизу (после выравнивания)
+  if (settings.underline) {
+    console.log("Applying underline");
+    const lines = formattedText.split("\n");
+    formattedText = lines
+      .map((line) => {
+        if (line.trim()) {
+          // Вычисляем длину без форматирующих символов
+          const cleanLine = line
+            .replace(/[\*\/\[\]]/g, "")
+            .replace(/[AB]/g, "")
+            .trim();
+          const underlineLength = Math.min(cleanLine.length, actualWidth);
+          const lineIndent = line.length - line.trimLeft().length; // Сохраняем отступ
+          return (
+            line +
+            "\n" +
+            " ".repeat(lineIndent) +
+            "‾".repeat(Math.max(1, underlineLength))
+          );
+        }
+        return line;
+      })
+      .join("\n");
+  }
+
+  console.log("Final formatted text:", formattedText);
+  console.log("=== End Formatting ===");
   return formattedText;
 }
 
@@ -383,26 +473,44 @@ function formatPreviewText(text, settings) {
  * Центрирует текст с учетом ширины чека
  */
 function centerTextToWidth(text, width) {
-  const lines = text.split('\n');
-  return lines.map(line => {
-    if (!line.trim()) return line;
-    const cleanLine = line.replace(/\*\*/g, '').replace(/[_\/]/g, '');
-    const padding = Math.max(0, Math.floor((width - cleanLine.length) / 2));
-    return ' '.repeat(padding) + line;
-  }).join('\n');
+  const lines = text.split("\n");
+  return lines
+    .map((line) => {
+      if (!line.trim()) return line;
+      // Удаляем все форматирующие символы для подсчета реальной длины
+      const cleanLine = line
+        .replace(/[\*\/\[\]]/g, "") // звездочки, слеши, скобки
+        .replace(/[AB]/g, "") // индикаторы шрифтов
+        .replace(/[·‾]/g, "") // точки и подчеркивания
+        .replace(/\s+/g, " "); // нормализуем пробелы
+
+      const actualLength = cleanLine.length;
+      const padding = Math.max(0, Math.floor((width - actualLength) / 2));
+      return " ".repeat(padding) + line;
+    })
+    .join("\n");
 }
 
 /**
  * Выравнивает текст по правому краю с учетом ширины чека
  */
 function rightAlignTextToWidth(text, width) {
-  const lines = text.split('\n');
-  return lines.map(line => {
-    if (!line.trim()) return line;
-    const cleanLine = line.replace(/\*\*/g, '').replace(/[_\/]/g, '');
-    const padding = Math.max(0, width - cleanLine.length);
-    return ' '.repeat(padding) + line;
-  }).join('\n');
+  const lines = text.split("\n");
+  return lines
+    .map((line) => {
+      if (!line.trim()) return line;
+      // Удаляем все форматирующие символы для подсчета реальной длины
+      const cleanLine = line
+        .replace(/[\*\/\[\]]/g, "") // звездочки, слеши, скобки
+        .replace(/[AB]/g, "") // индикаторы шрифтов
+        .replace(/[·‾]/g, "") // точки и подчеркивания
+        .replace(/\s+/g, " "); // нормализуем пробелы
+
+      const actualLength = cleanLine.length;
+      const padding = Math.max(0, width - actualLength);
+      return " ".repeat(padding) + line;
+    })
+    .join("\n");
 }
 
 /**
@@ -446,7 +554,7 @@ function rightAlignText(text) {
  */
 function testTemplateProcessing() {
   console.log("=== Testing Template Processing (No Print) ===");
-  
+
   // Создаем тестовые данные
   const testData = {
     id: "TEST-123",
@@ -468,7 +576,7 @@ function testTemplateProcessing() {
         quantity: 1,
         price: 12000,
         currency: "UZS",
-      }
+      },
     ],
     branch: {
       name: "UMA-OIL LOLA",
@@ -482,89 +590,115 @@ function testTemplateProcessing() {
       usd: 5.0,
     },
     paidAmount: {
-      uzs: 40000,  // Меньше чем общая сумма, чтобы создать долг
-      usd: 3.0,    // Меньше чем общая сумма в USD
+      uzs: 40000, // Меньше чем общая сумма, чтобы создать долг
+      usd: 3.0, // Меньше чем общая сумма в USD
     },
     debtAmount: {
-      uzs: 22000,  // Есть долг в сумах
-      usd: 2.0,    // Есть долг в долларах
+      uzs: 22000, // Есть долг в сумах
+      usd: 2.0, // Есть долг в долларах
     },
     notes: "Test template processing with debt and notes", // Есть заметки
     date_returned: new Date(Date.now() + 86400000).toISOString(), // Есть дата возврата
     paymentType: "cash",
-    status: "completed"
+    status: "completed",
   };
 
   try {
     // Загружаем шаблоны
     const templates = require("./templates.json");
     const orderTemplate = templates.new_order;
-    
+
     if (!orderTemplate) {
       throw new Error("Order template not found");
     }
-    
+
     console.log("Template loaded:", orderTemplate.name);
-    
+
     // Подготавливаем данные
     const preparedData = prepareTemplateData(testData);
-    
+
     // Симулируем обработку сегментов
     if (orderTemplate.segments && Array.isArray(orderTemplate.segments)) {
       console.log("\n=== Processing Template Segments ===");
       let hasContent = false;
       let processedSegments = 0;
       let skippedConditionalSegments = 0;
-      
+
       orderTemplate.segments.forEach((segment, index) => {
-        if (!segment.content || segment.content.trim() === '') {
+        if (!segment.content || segment.content.trim() === "") {
           console.log(`Segment ${index}: EMPTY - skipping`);
           return;
         }
-        
-        const processedContent = renderTemplateString(segment.content, preparedData);
-        
-        if (processedContent && processedContent.trim() !== '') {
-          console.log(`Segment ${index}: OK - "${processedContent.substring(0, 50)}..."`);
+
+        const processedContent = renderTemplateString(
+          segment.content,
+          preparedData
+        );
+
+        if (processedContent && processedContent.trim() !== "") {
+          console.log(
+            `Segment ${index}: OK - "${processedContent.substring(0, 50)}..."`
+          );
           hasContent = true;
           processedSegments++;
         } else {
           // Проверяем, содержит ли сегмент только условные блоки
-          const hasConditionals = segment.content.includes(':if}') && segment.content.includes(':endif}');
+          const hasConditionals =
+            segment.content.includes(":if}") &&
+            segment.content.includes(":endif}");
           if (hasConditionals) {
-            console.log(`Segment ${index}: CONDITIONAL EMPTY (OK) - "${segment.content.substring(0, 50)}..."`);
+            console.log(
+              `Segment ${index}: CONDITIONAL EMPTY (OK) - "${segment.content.substring(0, 50)}..."`
+            );
             skippedConditionalSegments++;
           } else {
-            console.log(`Segment ${index}: EMPTY AFTER PROCESSING - "${segment.content.substring(0, 50)}..."`);
+            console.log(
+              `Segment ${index}: EMPTY AFTER PROCESSING - "${segment.content.substring(0, 50)}..."`
+            );
           }
         }
       });
-      
-      console.log(`\nSummary: ${processedSegments} with content, ${skippedConditionalSegments} conditional empty`);
-      
+
+      console.log(
+        `\nSummary: ${processedSegments} with content, ${skippedConditionalSegments} conditional empty`
+      );
+
       if (hasContent) {
         console.log("\n✅ Template processing successful - content found");
         return { success: true, message: "Template processed successfully" };
       } else {
         const totalSegments = orderTemplate.segments.length;
-        const nonConditionalSegments = totalSegments - skippedConditionalSegments;
-        
+        const nonConditionalSegments =
+          totalSegments - skippedConditionalSegments;
+
         if (nonConditionalSegments > 0) {
-          console.log("\n❌ Template processing failed - no content in non-conditional segments");
-          return { success: false, message: "No printable content in non-conditional segments" };
+          console.log(
+            "\n❌ Template processing failed - no content in non-conditional segments"
+          );
+          return {
+            success: false,
+            message: "No printable content in non-conditional segments",
+          };
         } else if (totalSegments === skippedConditionalSegments) {
-          console.log("\n⚠️ All segments are conditional and empty - this may be normal");
-          return { success: false, message: "All segments are conditional and empty" };
+          console.log(
+            "\n⚠️ All segments are conditional and empty - this may be normal"
+          );
+          return {
+            success: false,
+            message: "All segments are conditional and empty",
+          };
         } else {
           console.log("\n❌ Template processing failed - no content");
-          return { success: false, message: "No printable content after processing" };
+          return {
+            success: false,
+            message: "No printable content after processing",
+          };
         }
       }
     } else {
       console.log("❌ Template has no segments");
       return { success: false, message: "Template has no segments" };
     }
-    
   } catch (error) {
     console.error("❌ Template processing error:", error);
     return { success: false, message: error.message };
@@ -576,7 +710,7 @@ function testTemplateProcessing() {
  */
 function testPrint() {
   console.log("=== Starting Test Print ===");
-  
+
   // Создаем тестовые данные, совместимые с шаблоном
   const testData = {
     id: "TEST-123",
@@ -620,17 +754,17 @@ function testPrint() {
       usd: 4.2,
     },
     paidAmount: {
-      uzs: 30000,  // Создаем долг для тестирования условных блоков
+      uzs: 30000, // Создаем долг для тестирования условных блоков
       usd: 4.2,
     },
     debtAmount: {
-      uzs: 22000,  // Есть долг в сумах
+      uzs: 22000, // Есть долг в сумах
       usd: 0,
     },
     notes: "Тестовая печать системы - проверка условных блоков",
     date_returned: new Date(Date.now() + 86400000).toISOString(),
     paymentType: "cash",
-    status: "completed"
+    status: "completed",
   };
 
   console.log("Test data prepared:", JSON.stringify(testData, null, 2));
@@ -657,7 +791,7 @@ function testPrint() {
     hasName: !!orderTemplate.name,
     hasSegments: !!orderTemplate.segments,
     segmentsCount: orderTemplate.segments ? orderTemplate.segments.length : 0,
-    hasGlobalSettings: !!orderTemplate.globalSettings
+    hasGlobalSettings: !!orderTemplate.globalSettings,
   });
 
   if (!orderTemplate.segments || !Array.isArray(orderTemplate.segments)) {
@@ -670,7 +804,7 @@ function testPrint() {
     throw new Error("Шаблон содержит пустой массив сегментов");
   }
 
-  console.log(`Using template: ${orderTemplate.name || 'new_order'}`);
+  console.log(`Using template: ${orderTemplate.name || "new_order"}`);
   console.log(`Template has ${orderTemplate.segments.length} segments`);
 
   // Печать с новым форматом
@@ -680,7 +814,7 @@ function testPrint() {
 function prepareTemplateData(data) {
   console.log("=== Preparing Template Data ===");
   console.log("Input data:", JSON.stringify(data, null, 2));
-  
+
   const result = { ...data };
 
   // Форматируем дату
@@ -878,38 +1012,41 @@ function testConnection(ip) {
 
 function renderTemplate(content, data) {
   // Agar content ob'ekt bo'lsa (yangi format), uni string ga o'giramiz
-  if (typeof content === 'object' && content !== null) {
+  if (typeof content === "object" && content !== null) {
     if (content.segments && Array.isArray(content.segments)) {
       // Yangi format - segmentlarni birlashtiriramiz
-      return content.segments.map(segment => {
-        if (segment.content) {
-          return renderTemplateString(segment.content, data);
-        }
-        return '';
-      }).filter(text => text.trim() !== '').join('\n');
+      return content.segments
+        .map((segment) => {
+          if (segment.content) {
+            return renderTemplateString(segment.content, data);
+          }
+          return "";
+        })
+        .filter((text) => text.trim() !== "")
+        .join("\n");
     } else if (content.content) {
       // Eski format ob'ekt ko'rinishida
       return renderTemplateString(content.content, data);
     } else {
-      console.warn('Unknown template format:', content);
-      return '';
+      console.warn("Unknown template format:", content);
+      return "";
     }
   }
-  
+
   // Agar string bo'lsa, to'g'ridan-to'g'ri ishlov beramiz
-  if (typeof content === 'string') {
+  if (typeof content === "string") {
     return renderTemplateString(content, data);
   }
-  
-  console.warn('Invalid template content type:', typeof content);
-  return '';
+
+  console.warn("Invalid template content type:", typeof content);
+  return "";
 }
 
 function renderTemplateString(content, data) {
   console.log(`=== Rendering Template String ===`);
   console.log(`Input content: "${content}"`);
   console.log(`Available data keys:`, Object.keys(data));
-  
+
   let result = content;
 
   // Обработка условных конструкций {key:if}...{key:endif}
@@ -1014,5 +1151,5 @@ module.exports = {
   previewTemplate,
   getTestTemplateData,
   renderTemplate,
-  renderTemplateString
+  renderTemplateString,
 };
